@@ -1650,13 +1650,21 @@ async function autoLoad() {
 }
 
 async function loadManifest() {
-  const manifestPaths = ['../ready/manifest.json', '/ready/manifest.json'];
-  for (const manifestPath of manifestPaths) {
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const viewerIdx = pathParts.indexOf('viewer');
+  const appBase = viewerIdx >= 0
+    ? '/' + pathParts.slice(0, viewerIdx).join('/') + '/'
+    : location.pathname.replace(/[^/]*$/, '');
+  const manifestPaths = [
+    new URL('ready/manifest.json', location.origin + appBase).href,
+    new URL('../ready/manifest.json', location.href).href
+  ];
+  for (const manifestPath of [...new Set(manifestPaths)]) {
     try {
       const res = await fetch(manifestPath);
       if (!res.ok) continue;
       const data = await res.json();
-      const base = new URL(manifestPath.replace(/manifest\.json$/,''), location.href);
+      const base = new URL('./', manifestPath);
       return (data.images || []).map(item => {
         const path = typeof item === 'string' ? item : item.path;
         const name = path.split('/').pop();

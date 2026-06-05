@@ -142,7 +142,11 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
   transition:all .15s}
 .grpFilterBtn:hover{background:var(--bg3);color:var(--text2)}
 .grpFilterBtn.active{background:var(--bg3);border-color:#555;color:var(--text)}
-.grpStat{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px}
+.grpStat{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;
+  cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
+.grpStat:hover{background:var(--bg3);border-color:#444}
+.grpStat.active{border-color:var(--accent);background:#162216;box-shadow:inset 0 0 0 1px rgba(76,175,80,.25)}
+.grpStat:active{transform:translateY(1px)}
 .grpStat .n{font-size:26px;font-weight:700}
 .grpStat .lbl{font-size:12px;color:var(--text2);margin-top:2px}
 .grpStat .sub{font-size:11px;color:var(--text3);margin-top:3px}
@@ -218,6 +222,15 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
   padding:2px 8px;font-size:18px;line-height:1}
 .navImgBtn:hover{color:#fff}
 #imgCtr{font-size:12px;color:#777}
+#imgAdjust{position:absolute;right:10px;bottom:12px;width:170px;
+  background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.08);
+  border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.adjRow{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;gap:7px}
+.adjRow label{font-size:11px;color:#888}
+.adjRow span{font-size:11px;color:#777;text-align:right;font-variant-numeric:tabular-nums}
+.adjRow input{width:100%;accent-color:var(--accent)}
+.adjReset{align-self:flex-end;background:none;border:none;color:#777;font-size:11px;cursor:pointer;padding:1px 0}
+.adjReset:hover{color:#ddd}
 #thumbBar{height:63px;background:rgba(0,0,0,.9);display:flex;align-items:center;
   gap:5px;padding:5px 10px;overflow-x:auto;flex-shrink:0}
 .thumb{height:52px;width:52px;object-fit:cover;border:2px solid #2a2a2a;
@@ -226,7 +239,7 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
 .thumb:hover{border-color:#555}
 
 /* Measurement panel */
-#panel{width:325px;min-width:325px;background:var(--bg2);
+#panel{width:280px;min-width:280px;background:var(--bg2);
   border-left:1px solid var(--border2);display:flex;flex-direction:column;overflow:hidden}
 #panelTabs{display:flex;background:var(--bg);border-bottom:1px solid var(--border2);
   overflow-x:auto;flex-shrink:0}
@@ -251,11 +264,17 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
 .numIn:focus{outline:none;border-color:var(--accent)}
 .numIn.w:focus{border-color:var(--warn)}
 .numUnit{font-size:13px;color:var(--text3)}
-.mBtn{width:100%;margin-top:8px;padding:8px;background:#1a2233;
+.measureRow{display:flex;gap:6px;margin-top:8px}
+.mBtn{width:100%;padding:8px;background:#1a2233;
   border:1px solid #1976D2;border-radius:4px;color:#64B5F6;
   font-size:12px;cursor:pointer;transition:all .15s}
 .mBtn:hover{background:#1565C0;color:#fff}
 .mBtn.on{background:#331a1a;border-color:#f44336;color:#EF9A9A}
+.mBtn.measureMain{flex:1;padding:9px 8px;font-weight:700}
+.mBtn.clearSmall{flex:0 0 34px;width:34px;padding:0;font-size:13px;
+  display:flex;align-items:center;justify-content:center;color:#888;
+  background:var(--bg2);border-color:var(--border3)}
+.mBtn.clearSmall:hover{background:#2a1a1a;border-color:#6d2a2a;color:#EF9A9A}
 .optGroup{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
 .optBtn{padding:10px 14px;border-radius:5px;background:var(--bg);
   border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;
@@ -403,11 +422,6 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
     <span style="font-size:14px;font-weight:600;color:#fff">病人分組</span>
     <span style="font-size:12px;color:var(--text3)">418 位病人・4 組配對設計</span>
     <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-      <button id="gbAll"   class="grpFilterBtn active" onclick="setGrpFilter('')">全部</button>
-      <button id="gbCA"    class="grpFilterBtn" onclick="setGrpFilter('CASE_A')" style="color:var(--accent)">CASE A</button>
-      <button id="gbCtA"   class="grpFilterBtn" onclick="setGrpFilter('CTRL_A')" style="color:#EF9A9A">Control A</button>
-      <button id="gbCB"    class="grpFilterBtn" onclick="setGrpFilter('CASE_B')" style="color:#64B5F6">CASE B</button>
-      <button id="gbCtB"   class="grpFilterBtn" onclick="setGrpFilter('CTRL_B')" style="color:#FFE082">Control B</button>
       <input id="grpSearch" type="text" placeholder="Chart ID..."
         oninput="filterGrpTable(this.value)"
         style="padding:5px 8px;background:var(--bg);border:1px solid var(--border3);border-radius:4px;color:var(--text2);font-size:12px;width:130px">
@@ -475,6 +489,19 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
         <button class="navImgBtn" onclick="chImg(1)">下一張 ›</button>
         <button class="navImgBtn" id="btnResetZoom" onclick="resetZoom()" style="font-size:11px;padding:2px 8px;opacity:0.5;display:none">⊙ 還原</button>
       </div>
+      <div id="imgAdjust">
+        <div class="adjRow">
+          <label for="brightIn">亮度</label>
+          <input id="brightIn" type="range" min="50" max="180" step="5" value="100" oninput="setImgAdjust()">
+          <span id="brightVal">100</span>
+        </div>
+        <div class="adjRow">
+          <label for="contrastIn">對比</label>
+          <input id="contrastIn" type="range" min="50" max="200" step="5" value="100" oninput="setImgAdjust()">
+          <span id="contrastVal">100</span>
+        </div>
+        <button class="adjReset" onclick="resetImgAdjust()">重設亮暗</button>
+      </div>
     </div>
     <div id="thumbBar"></div>
   </div>
@@ -501,9 +528,9 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
             <input type="number" class="numIn" id="v-A1" step="0.1" min="0" placeholder="—" oninput="markF('A1')">
             <span class="numUnit">mm</span>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="mBtn" id="mb-A1" onclick="togM('A1')" style="flex:1">📏 標點量測</button>
-            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px">✕</button>
+          <div class="measureRow">
+            <button class="mBtn measureMain" id="mb-A1" onclick="togM('A1')">📏 標點量測</button>
+            <button class="mBtn clearSmall" onclick="clearCanvas()" title="清除標記">✕</button>
           </div>
         </div>
       </div>
@@ -516,9 +543,9 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
             <input type="number" class="numIn" id="v-A2" step="0.1" min="0" placeholder="—" oninput="markF('A2')">
             <span class="numUnit">mm</span>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="mBtn" id="mb-A2" onclick="togM('A2')" style="flex:1">📏 標點量測</button>
-            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px">✕</button>
+          <div class="measureRow">
+            <button class="mBtn measureMain" id="mb-A2" onclick="togM('A2')">📏 標點量測</button>
+            <button class="mBtn clearSmall" onclick="clearCanvas()" title="清除標記">✕</button>
           </div>
         </div>
       </div>
@@ -541,9 +568,9 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
             <input type="number" class="numIn" id="v-B1" step="0.1" min="0" placeholder="—" oninput="markF('B1')">
             <span class="numUnit">mm</span>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="mBtn" id="mb-B1" onclick="togM('B1')" style="flex:1">📏 標點量測</button>
-            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px" title="清除標記">✕</button>
+          <div class="measureRow">
+            <button class="mBtn measureMain" id="mb-B1" onclick="togM('B1')">📏 標點量測</button>
+            <button class="mBtn clearSmall" onclick="clearCanvas()" title="清除標記">✕</button>
           </div>
         </div>
       </div>
@@ -556,9 +583,9 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
             <input type="number" class="numIn" id="v-B2" step="0.1" min="0" placeholder="—" oninput="markF('B2')">
             <span class="numUnit">mm</span>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="mBtn" id="mb-B2" onclick="togM('B2')" style="flex:1">📏 標點量測</button>
-            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px" title="清除標記">✕</button>
+          <div class="measureRow">
+            <button class="mBtn measureMain" id="mb-B2" onclick="togM('B2')">📏 標點量測</button>
+            <button class="mBtn clearSmall" onclick="clearCanvas()" title="清除標記">✕</button>
           </div>
         </div>
       </div>
@@ -581,9 +608,9 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
             <input type="number" class="numIn" id="v-C2" step="0.1" min="0" placeholder="—" oninput="markF('C2')">
             <span class="numUnit">cm</span>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="mBtn" id="mb-C2" onclick="togM('C2')" style="flex:1">📏 標點量測</button>
-            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px">✕</button>
+          <div class="measureRow">
+            <button class="mBtn measureMain" id="mb-C2" onclick="togM('C2')">📏 標點量測</button>
+            <button class="mBtn clearSmall" onclick="clearCanvas()" title="清除標記">✕</button>
           </div>
         </div>
       </div>
@@ -676,7 +703,8 @@ function goto(pg){
 
 // ── OVERVIEW ───────────────────────────────────────────────
 function updateOvProgress(){
-  const done=patients.filter(p=>isDone(p)).length, tot=patients.length;
+  const totalIds = PATIENTS.map(p=>p.id);
+  const done=totalIds.filter(p=>isDone(p)).length, tot=totalIds.length;
   document.getElementById('ovDone').textContent=done;
   document.getElementById('ovTotal').textContent=tot;
   document.getElementById('ovProg').style.width=tot?(done/tot*100)+'%':'0%';
@@ -1112,15 +1140,17 @@ grpData = PATIENTS; // initialise grpData from hardcoded list
 function renderGrpPage(){
   const colors={CASE_A:'var(--accent)',CASE_B:'#64B5F6',CTRL_A:'#EF9A9A',CTRL_B:'#FFE082'};
   const lbls={CASE_A:'CASE A (LA-C/D)',CASE_B:'CASE B (Barrett\'s)',CTRL_A:'Control A',CTRL_B:'Control B'};
+  const subs={CASE_A:'Primary case',CTRL_A:'Matched control',CASE_B:'Secondary case',CTRL_B:'Matched control'};
   const cnts={CASE_A:0,CTRL_A:0,CASE_B:0,CTRL_B:0};
   PATIENTS.forEach(p=>cnts[p.grp]++);
   document.getElementById('grpStatGrid').innerHTML=
     Object.entries(cnts).map(([g,n])=>`
-      <div class="grpStat">
+      <div class="grpStat ${grpFilterVal===g?'active':''}" onclick="setGrpFilter('${grpFilterVal===g?'':g}')" title="點選篩選 ${lbls[g]}">
         <div class="n" style="color:${colors[g]}">${n}</div>
         <div class="lbl">${lbls[g]}</div>
+        <div class="sub">${subs[g]}</div>
       </div>`).join('');
-  renderGrpTable(PATIENTS);
+  filterGrpTable(document.getElementById('grpSearch')?.value||'');
 }
 
 function renderGrpTable(data){
@@ -1225,12 +1255,28 @@ function chImg(d){
 // ── ZOOM / PAN ───────────────────────────────────────────────
 let vZoom=1, vPanX=0, vPanY=0;
 let vDrag=false, vDragLast={x:0,y:0};
+let imgBrightness=100, imgContrast=100;
 
 function applyImgTransform(){
   const img=document.getElementById('mainImg');
   img.style.transform=`translate(calc(-50% + ${vPanX}px), calc(-50% + ${vPanY}px)) scale(${vZoom})`;
+  img.style.filter=`brightness(${imgBrightness}%) contrast(${imgContrast}%)`;
   document.getElementById('btnResetZoom').style.display=vZoom!==1||vPanX!==0||vPanY!==0?'inline-block':'none';
   requestAnimationFrame(posCanvas);
+}
+
+function setImgAdjust(){
+  imgBrightness=parseInt(document.getElementById('brightIn').value,10)||100;
+  imgContrast=parseInt(document.getElementById('contrastIn').value,10)||100;
+  document.getElementById('brightVal').textContent=imgBrightness;
+  document.getElementById('contrastVal').textContent=imgContrast;
+  applyImgTransform();
+}
+
+function resetImgAdjust(){
+  document.getElementById('brightIn').value=100;
+  document.getElementById('contrastIn').value=100;
+  setImgAdjust();
 }
 
 function resetZoom(){
@@ -1651,11 +1697,7 @@ async function crawlDir(path, depth=3) {
 let grpFilterVal = '';
 function setGrpFilter(v){
   grpFilterVal = v;
-  ['gbAll','gbCA','gbCtA','gbCB','gbCtB'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.classList.remove('active');
-  });
-  const map={'':'gbAll','CASE_A':'gbCA','CTRL_A':'gbCtA','CASE_B':'gbCB','CTRL_B':'gbCtB'};
-  const active=document.getElementById(map[v]); if(active) active.classList.add('active');
+  renderGrpPage();
   filterGrpTable(document.getElementById('grpSearch')?.value||'');
 }
 function filterGrpTable(search){
@@ -1677,6 +1719,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='PageUp'){navPt(-1);e.preventDefault();}
   if(e.key==='PageDown'){navPt(1);e.preventDefault();}
 });
+
+updateOvProgress();
 </script>
 </body>
 </html>

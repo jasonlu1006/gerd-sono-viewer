@@ -1,0 +1,21 @@
+.DS_Store
+AGENTS.md
+CLAUDE.md
+
+# 研究文件與本機處理工具，不屬於線上閱片網站
+文件/
+converter/
+filter/
+
+# 原始健保與臨床資料，不要推上 GitHub
+Raw Data/
+病人名單/
+影像記錄表/
+*.xlsx
+*.xls
+*.csv
+*.docx
+
+# 本機輸出與暫存
+*.log
+__pycache__/

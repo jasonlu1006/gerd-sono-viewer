@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GERD 超音波研究平台</title>
+<style>
+#loginScreen{
+  position:fixed;inset:0;background:#0e0e0e;
+  display:flex;align-items:center;justify-content:center;z-index:9999;
+}
+.loginBox{
+  background:#1a1a1a;border:1px solid #2e2e2e;border-radius:12px;
+  padding:40px 48px;text-align:center;width:320px;
+}
+.loginBox h2{color:#fff;font-size:18px;margin-bottom:6px;font-weight:600}
+.loginBox p{color:#555;font-size:13px;margin-bottom:24px}
+#loginInput{
+  width:100%;padding:10px 14px;background:#111;border:1px solid #333;
+  border-radius:6px;color:#fff;font-size:16px;letter-spacing:3px;
+  text-align:center;margin-bottom:12px;outline:none;
+}
+#loginInput:focus{border-color:#4CAF50}
+#loginBtn{
+  width:100%;padding:10px;background:#4CAF50;border:none;border-radius:6px;
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+#loginBtn:hover{background:#43A047}
+#loginErr{color:#f44336;font-size:12px;margin-top:8px;min-height:18px}
+</style>
+<style>
+:root {
+  --bg:#111; --bg2:#1a1a1a; --bg3:#222; --bg4:#2a2a2a;
+  --border:#1e1e1e; --border2:#2e2e2e; --border3:#3a3a3a;
+  --text:#ddd; --text2:#999; --text3:#555;
+  --accent:#4CAF50; --accent2:#43A047;
+  --warn:#ff9800; --info:#2196F3;
+  --nav-h:50px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column}
+
+/* NAV */
+nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;padding:0 16px;gap:2px;flex-shrink:0;z-index:10}
+.logo{color:var(--text3);font-size:13px;margin-right:10px;white-space:nowrap}
+.navBtn{padding:6px 14px;border-radius:6px;border:none;background:transparent;
+  color:var(--text3);font-size:13px;cursor:pointer;transition:all .15s;font-weight:500;
+  display:flex;align-items:center;gap:6px;white-space:nowrap}
+.navBtn:hover{background:var(--bg3);color:var(--text2)}
+.navBtn.active{background:var(--bg3);color:var(--text)}
+.navDot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.navBtn.active .navDot{background:var(--accent)}
+.navRight{margin-left:auto;display:flex;align-items:center;gap:8px}
+.blindBadge{padding:3px 8px;border-radius:4px;background:#221a00;
+  border:1px solid #554400;color:#aa8800;font-size:11px}
+
+/* PAGES */
+.page{display:none;flex:1;overflow:hidden;flex-direction:column}
+.page.active{display:flex}
+
+/* BUTTONS */
+.btn{padding:7px 14px;border-radius:5px;border:1px solid var(--border3);
+  background:var(--bg3);color:var(--text2);cursor:pointer;font-size:13px;transition:all .15s}
+.btn:hover{background:var(--bg4);color:var(--text)}
+.btn.primary{background:#1565C0;border-color:#1976D2;color:#fff}
+.btn.primary:hover{background:#1976D2}
+.btn.success{background:#1b5e20;border-color:var(--accent);color:#fff}
+.btn.success:hover{background:#2e7d32}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a3a}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px}
+.cardTitle{font-size:11px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--text3);margin-bottom:14px}
+.statBig{font-size:30px;font-weight:700;color:#fff}
+.statSub{font-size:12px;color:var(--text2);margin-top:3px}
+.progressBar{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:8px}
+.progressFill{height:100%;background:var(--accent);transition:width .3s;border-radius:3px}
+
+/* EMPTY STATE */
+.emptyState{text-align:center;padding:50px 20px;color:var(--text3)}
+.emptyIcon{font-size:36px;margin-bottom:12px}
+.emptyText{font-size:14px}
+.emptyHint{font-size:12px;color:#333;margin-top:8px}
+
+/* ===================== PAGE 1: OVERVIEW ===================== */
+#page-overview{overflow-y:auto}
+.overviewWrap{max-width:1100px;margin:0 auto;padding:28px 28px}
+.pageTitle{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+.pageSubtitle{font-size:13px;color:var(--text2);margin-bottom:24px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
+.mb16{margin-bottom:16px}
+.mb24{margin-bottom:24px}
+
+.groupCard{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;
+  padding:14px 18px;display:flex;align-items:center;gap:14px}
+.groupBadge{width:42px;height:42px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;text-align:center;line-height:1.3}
+.badge-CA{background:#1a3a1a;color:var(--accent);border:1px solid var(--accent)}
+.badge-CtA{background:#2a1a1a;color:#EF9A9A;border:1px solid #EF9A9A}
+.badge-CB{background:#1a2a3a;color:#64B5F6;border:1px solid #64B5F6}
+.badge-CtB{background:#2a2a1a;color:#FFE082;border:1px solid #FFE082}
+.groupName{font-size:14px;font-weight:600;color:#fff}
+.groupDesc{font-size:12px;color:var(--text2);margin-top:2px}
+.groupNum{margin-left:auto;text-align:right;font-size:24px;font-weight:700;color:#fff}
+.groupNumSub{font-size:11px;color:var(--text3)}
+
+.paramTable{width:100%;border-collapse:collapse}
+.paramTable th{text-align:left;padding:7px 10px;font-size:11px;text-transform:uppercase;
+  letter-spacing:1px;color:var(--text3);border-bottom:1px solid var(--border2)}
+.paramTable td{padding:9px 10px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border)}
+.paramTable tr:last-child td{border-bottom:none}
+.pCode{font-weight:700;color:var(--accent)}
+.pCode.w{color:var(--warn)}
+
+.criteriaList{list-style:none}
+.criteriaList li{padding:7px 0;font-size:13px;color:var(--text2);
+  border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px}
+.criteriaList li:last-child{border-bottom:none}
+.cIcon{flex-shrink:0}
+.cIcon.ok{color:var(--accent)}
+.cIcon.no{color:#f44336}
+.cIcon.warn{color:var(--warn)}
+
+/* ===================== PAGE 2: GROUPS ===================== */
+#page-groups{overflow:hidden}
+#grpHeader{padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;gap:10px;flex-shrink:0}
+#grpContent{flex:1;overflow-y:auto;padding:20px}
+.grpStatGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.grpFilterBtn{padding:5px 10px;border-radius:4px;border:1px solid var(--border3);
+  background:var(--bg);color:var(--text3);cursor:pointer;font-size:12px;font-weight:500;
+  transition:all .15s}
+.grpFilterBtn:hover{background:var(--bg3);color:var(--text2)}
+.grpFilterBtn.active{background:var(--bg3);border-color:#555;color:var(--text)}
+.grpStat{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px}
+.grpStat .n{font-size:26px;font-weight:700}
+.grpStat .lbl{font-size:12px;color:var(--text2);margin-top:2px}
+.grpStat .sub{font-size:11px;color:var(--text3);margin-top:3px}
+
+.tableWrap{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.tableBar{padding:10px 14px;border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;gap:10px}
+.tableBar span{font-size:12px;color:var(--text3)}
+.tableBar input{padding:4px 8px;background:var(--bg);border:1px solid var(--border3);
+  border-radius:4px;color:var(--text);font-size:12px;margin-left:auto}
+.tableBar input:focus{outline:none;border-color:#444}
+.dataTable{width:100%;border-collapse:collapse}
+.dataTable th{text-align:left;padding:9px 14px;font-size:11px;text-transform:uppercase;
+  letter-spacing:1px;color:var(--text3);background:#181818;border-bottom:1px solid var(--border2)}
+.dataTable td{padding:8px 14px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border)}
+.dataTable tr:hover td{background:#1c1c1c}
+.grpTag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.tag-CA{background:#1a3a1a;color:var(--accent)}
+.tag-CtA{background:#2a1a1a;color:#EF9A9A}
+.tag-CB{background:#1a2a3a;color:#64B5F6}
+.tag-CtB{background:#2a2a1a;color:#FFE082}
+
+/* ===================== PAGE 3: READER ===================== */
+#page-reader{flex-direction:row;overflow:hidden}
+
+/* Sidebar */
+#sidebar{width:205px;min-width:205px;background:var(--bg2);
+  border-right:1px solid var(--border2);display:flex;flex-direction:column;overflow:hidden}
+#sideHdr{padding:9px 11px;border-bottom:1px solid var(--border2);flex-shrink:0}
+#sideHdr .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3)}
+#sideSearch{padding:7px 10px;border-bottom:1px solid var(--border2);flex-shrink:0}
+#sideSearch input{width:100%;padding:5px 8px;background:var(--bg);
+  border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px}
+#sideSearch input:focus{outline:none;border-color:#3a3a3a}
+#sideFilters{padding:5px 10px;border-bottom:1px solid var(--border2);
+  display:flex;gap:3px;flex-shrink:0}
+.sF{flex:1;padding:4px 0;font-size:11px;text-align:center;background:var(--bg);
+  border:1px solid var(--border2);border-radius:3px;color:var(--text3);cursor:pointer}
+.sF.active{background:var(--bg3);color:var(--text2);border-color:#3a3a3a}
+#sideList{flex:1;overflow-y:auto}
+.sideItem{padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:7px;
+  border-bottom:1px solid var(--border);transition:background .1s}
+.sideItem:hover{background:var(--bg3)}
+.sideItem.cur{background:#1a2a3a;border-left:2px solid var(--accent)}
+.sideDot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sdNone{background:#2a2a2a}
+.sdPart{background:var(--warn)}
+.sdDone{background:var(--accent)}
+.sideCid{font-size:12px;color:var(--text)}
+.sideImgs{font-size:10px;color:var(--text3)}
+.sideProg{margin-left:auto;font-size:10px;color:var(--text3)}
+#sideFoot{padding:9px;border-top:1px solid var(--border2);flex-shrink:0}
+
+/* Image viewer */
+#viewer{flex:1;background:#000;display:flex;flex-direction:column;
+  position:relative;overflow:hidden;min-width:0}
+#imgArea{flex:1;position:relative;overflow:hidden;cursor:grab;background:#000}
+#mainImg{position:absolute;top:50%;left:50%;max-width:100%;max-height:100%;
+  user-select:none;-webkit-user-drag:none;transform-origin:50% 50%}
+#mCanvas{position:absolute;pointer-events:none}
+#mCanvas.measuring{pointer-events:all;cursor:crosshair}
+#imgBadges{position:absolute;top:8px;left:8px;right:8px;
+  display:flex;justify-content:space-between;pointer-events:none}
+.imgBadge{background:rgba(0,0,0,.7);padding:3px 8px;
+  border-radius:4px;font-size:11px;color:#aaa}
+#mHint{position:absolute;top:36px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.85);padding:4px 12px;border-radius:4px;
+  font-size:12px;color:#ffcc00;display:none;pointer-events:none;white-space:nowrap}
+#imgNavBar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  display:flex;gap:4px;align-items:center;background:rgba(0,0,0,.75);
+  padding:4px 10px;border-radius:20px}
+.navImgBtn{background:none;border:none;color:#aaa;cursor:pointer;
+  padding:2px 8px;font-size:18px;line-height:1}
+.navImgBtn:hover{color:#fff}
+#imgCtr{font-size:12px;color:#777}
+#thumbBar{height:63px;background:rgba(0,0,0,.9);display:flex;align-items:center;
+  gap:5px;padding:5px 10px;overflow-x:auto;flex-shrink:0}
+.thumb{height:52px;width:52px;object-fit:cover;border:2px solid #2a2a2a;
+  border-radius:3px;cursor:pointer;flex-shrink:0;transition:border-color .1s}
+.thumb.active{border-color:var(--accent)}
+.thumb:hover{border-color:#555}
+
+/* Measurement panel */
+#panel{width:325px;min-width:325px;background:var(--bg2);
+  border-left:1px solid var(--border2);display:flex;flex-direction:column;overflow:hidden}
+#panelTabs{display:flex;background:var(--bg);border-bottom:1px solid var(--border2);
+  overflow-x:auto;flex-shrink:0}
+.pTab{flex:1;min-width:34px;padding:8px 2px;text-align:center;font-size:11px;
+  font-weight:700;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s;position:relative;white-space:nowrap}
+.pTab:hover{color:var(--text2)}
+.pTab.active{color:#fff;border-bottom-color:var(--accent)}
+.pTab.imp.active{border-bottom-color:var(--warn);color:var(--warn)}
+.pTab.filled::after{content:'';position:absolute;top:4px;right:4px;
+  width:5px;height:5px;border-radius:50%;background:var(--accent)}
+#panelBody{flex:1;overflow-y:auto}
+.pPane{display:none;padding:16px}
+.pPane.active{display:block}
+.pTitle{font-size:15px;font-weight:700;color:#fff;margin-bottom:3px}
+.pDesc{font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5}
+.numBox{background:var(--bg);border:1px solid var(--border2);
+  border-radius:6px;padding:12px 14px;margin-bottom:10px}
+.numRow{display:flex;align-items:center;gap:8px}
+.numIn{flex:1;padding:8px 10px;background:var(--bg2);border:1px solid #3a3a3a;
+  border-radius:4px;color:#fff;font-size:20px;font-weight:700}
+.numIn:focus{outline:none;border-color:var(--accent)}
+.numIn.w:focus{border-color:var(--warn)}
+.numUnit{font-size:13px;color:var(--text3)}
+.mBtn{width:100%;margin-top:8px;padding:8px;background:#1a2233;
+  border:1px solid #1976D2;border-radius:4px;color:#64B5F6;
+  font-size:12px;cursor:pointer;transition:all .15s}
+.mBtn:hover{background:#1565C0;color:#fff}
+.mBtn.on{background:#331a1a;border-color:#f44336;color:#EF9A9A}
+.optGroup{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.optBtn{padding:10px 14px;border-radius:5px;background:var(--bg);
+  border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;
+  gap:10px;transition:all .15s}
+.optBtn:hover{background:var(--bg3);border-color:#3a3a3a}
+.optBtn.sel{background:#1a2233;border-color:#1976D2}
+.optN{width:22px;height:22px;border-radius:50%;background:#282828;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#777;flex-shrink:0}
+.optBtn.sel .optN{background:#1976D2;color:#fff}
+.optTxt{font-size:13px;color:var(--text2)}
+.optBtn.sel .optTxt{color:#fff}
+.notesWrap textarea{width:100%;padding:8px 10px;min-height:80px;
+  background:var(--bg);border:1px solid var(--border2);border-radius:4px;
+  color:var(--text);font-size:13px;resize:vertical;line-height:1.5}
+.notesWrap textarea:focus{outline:none;border-color:#3a3a3a}
+#panelFoot{padding:12px 14px;border-top:1px solid var(--border2);
+  background:var(--bg);flex-shrink:0}
+#btnSave{width:100%;padding:10px;margin-bottom:8px;background:var(--accent);
+  border:none;border-radius:5px;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+#btnSave:hover{background:var(--accent2)}
+.footRow{display:flex;gap:6px}
+.footBtn{flex:1;padding:6px;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:4px;color:var(--text2);font-size:12px;cursor:pointer}
+.footBtn:hover{background:var(--bg3)}
+.blindNote{text-align:center;font-size:10px;color:#333;margin-top:8px}
+
+/* ===================== PAGE 4: RESULTS ===================== */
+#page-results{overflow-y:auto}
+#resWrap{max-width:1000px;margin:0 auto;padding:24px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="loginBox">
+    <h2>🔬 GERD SONO</h2>
+    <p>請輸入存取密碼</p>
+    <input id="loginInput" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button id="loginBtn" onclick="doLogin()">進入</button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <span class="logo">🔬 GERD SONO</span>
+  <button class="navBtn active" id="nav-overview" onclick="goto('overview')">
+    <span class="navDot"></span>研究架構
+  </button>
+  <button class="navBtn" id="nav-groups" onclick="goto('groups')">
+    <span class="navDot"></span>病人分組
+  </button>
+  <button class="navBtn" id="nav-reader" onclick="goto('reader')">
+    <span class="navDot"></span>閱片
+  </button>
+  <button class="navBtn" id="nav-results" onclick="goto('results')">
+    <span class="navDot"></span>結果
+  </button>
+  <div class="navRight">
+    <span class="blindBadge" id="blindBadge" style="display:none">⚑ 盲化模式</span>
+    <button class="btn primary" id="btnExport" onclick="exportCSV()" style="display:none">匯出 CSV</button>
+  </div>
+</nav>
+
+<!-- ============================================================
+     PAGE 1: OVERVIEW
+============================================================ -->
+<div class="page active" id="page-overview">
+<div class="overviewWrap">
+  <div class="pageTitle">腹部超音波診斷 GERD 研究</div>
+  <div class="pageSubtitle">Can abdominal ultrasound findings diagnose or differentiate severe GERD?</div>
+
+  <div class="card" style="padding:12px 16px;max-width:320px;margin-bottom:20px">
+    <div class="cardTitle" style="margin-bottom:6px">閱片進度</div>
+    <div class="statBig" style="font-size:22px"><span id="ovDone">0</span><span style="font-size:13px;color:var(--text3)"> / <span id="ovTotal">0</span></span></div>
+    <div class="statSub">病人已完成量測</div>
+    <div class="progressBar"><div class="progressFill" id="ovProg" style="width:0%"></div></div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);">研究分組</div>
+    <div style="font-size:28px;font-weight:700;color:#fff;line-height:1">418 <span style="font-size:14px;color:var(--text2);font-weight:400">人・4 組配對設計</span></div>
+  </div>
+  <div class="grid2 mb24">
+    <div class="groupCard">
+      <div class="groupBadge badge-CA">CASE<br>A</div>
+      <div><div class="groupName">嚴重逆流組（Primary）</div><div class="groupDesc">胃鏡 LA grade C 或 D</div></div>
+      <div class="groupNum" style="margin-left:auto">131<div class="groupNumSub">人</div></div>
+    </div>
+    <div class="groupCard">
+      <div class="groupBadge badge-CtA">CTRL<br>A</div>
+      <div><div class="groupName">對照組 A</div><div class="groupDesc">胃鏡食道正常（NERD）</div></div>
+      <div class="groupNum" style="margin-left:auto">131<div class="groupNumSub">人（1:1 配對）</div></div>
+    </div>
+    <div class="groupCard">
+      <div class="groupBadge badge-CB">CASE<br>B</div>
+      <div><div class="groupName">Barrett's 食道組（Secondary）</div><div class="groupDesc">內視鏡診斷 Barrett's esophagus</div></div>
+      <div class="groupNum" style="margin-left:auto">78<div class="groupNumSub">人</div></div>
+    </div>
+    <div class="groupCard">
+      <div class="groupBadge badge-CtB">CTRL<br>B</div>
+      <div><div class="groupName">對照組 B</div><div class="groupDesc">胃鏡食道正常（與 CTRL A 無重疊）</div></div>
+      <div class="groupNum" style="margin-left:auto">78<div class="groupNumSub">人（1:1 配對）</div></div>
+    </div>
+  </div>
+
+  <div class="grid2 mb16">
+    <div class="card">
+      <div class="cardTitle">量測參數</div>
+      <table class="paramTable">
+        <thead><tr><th>代號</th><th>項目</th><th>單位</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pCode">A1</span></td><td>腹內食道長度</td><td>mm</td></tr>
+          <tr><td><span class="pCode">A2</span></td><td>食道壁厚度</td><td>mm</td></tr>
+          <tr><td><span class="pCode">A3</span></td><td>GEJ 可視化程度</td><td>0/1/2</td></tr>
+          <tr><td><span class="pCode">B1</span></td><td>賁門壁厚度</td><td>mm</td></tr>
+          <tr><td><span class="pCode">B2</span></td><td>賁門壁厚度（第二測）</td><td>mm</td></tr>
+          <tr><td><span class="pCode">C1</span></td><td>Hiatal Hernia</td><td>0/1/2</td></tr>
+          <tr><td><span class="pCode">C2</span></td><td>疝氣大小</td><td>cm</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="cardTitle">收案條件</div>
+      <ul class="criteriaList">
+        <li><span class="cIcon ok">✓</span>同天做胃鏡（EDSC）和腹部超音波</li>
+        <li><span class="cIcon ok">✓</span>1:1 Exact Matching（性別相同，年齡 ±5 歲）</li>
+        <li><span class="cIcon no">✕</span>食道癌、胃癌、Achalasia、食道阻塞</li>
+        <li><span class="cIcon warn">⚠</span>閱片需盲化，量測者不知分組</li>
+        <li><span class="cIcon warn">⚠</span>Barrett's 為內視鏡診斷，無病理確認</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============================================================
+     PAGE 2: GROUPS
+============================================================ -->
+<div class="page" id="page-groups">
+  <div id="grpHeader">
+    <span style="font-size:14px;font-weight:600;color:#fff">病人分組</span>
+    <span style="font-size:12px;color:var(--text3)">418 位病人・4 組配對設計</span>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button id="gbAll"   class="grpFilterBtn active" onclick="setGrpFilter('')">全部</button>
+      <button id="gbCA"    class="grpFilterBtn" onclick="setGrpFilter('CASE_A')" style="color:var(--accent)">CASE A</button>
+      <button id="gbCtA"   class="grpFilterBtn" onclick="setGrpFilter('CTRL_A')" style="color:#EF9A9A">Control A</button>
+      <button id="gbCB"    class="grpFilterBtn" onclick="setGrpFilter('CASE_B')" style="color:#64B5F6">CASE B</button>
+      <button id="gbCtB"   class="grpFilterBtn" onclick="setGrpFilter('CTRL_B')" style="color:#FFE082">Control B</button>
+      <input id="grpSearch" type="text" placeholder="Chart ID..."
+        oninput="filterGrpTable(this.value)"
+        style="padding:5px 8px;background:var(--bg);border:1px solid var(--border3);border-radius:4px;color:var(--text2);font-size:12px;width:130px">
+    </div>
+  </div>
+  <div id="grpContent">
+    <div id="grpStatGrid" class="grpStatGrid" style="padding:16px 20px 0"></div>
+    <div style="padding:0 20px 20px">
+      <div class="tableWrap">
+        <div class="tableBar"><span id="grpCount"></span></div>
+        <div style="max-height:calc(100vh - 250px);overflow-y:auto">
+          <table class="dataTable">
+            <thead><tr><th>Chart ID</th><th>組別</th><th>診斷</th><th>性別</th><th>年齡</th><th>閱片狀態</th></tr></thead>
+            <tbody id="grpTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 3: READER
+============================================================ -->
+<div class="page" id="page-reader">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sideHdr">
+      <span class="lbl">病人列表 <span id="sideCnt" style="color:var(--accent)"></span></span>
+    </div>
+    <div id="sideSearch"><input type="text" placeholder="搜尋..." oninput="filterSide(this.value)"></div>
+    <div id="sideFilters">
+      <button class="sF active" onclick="setSF('all',this)">全部</button>
+      <button class="sF" onclick="setSF('todo',this)">未完成</button>
+      <button class="sF" onclick="setSF('done',this)">已完成</button>
+    </div>
+    <div id="sideList">
+      <div class="emptyState" style="padding:28px 10px">
+        <div class="emptyIcon" style="font-size:24px">📁</div>
+        <div class="emptyText" style="font-size:12px">開啟影像資料夾</div>
+      </div>
+    </div>
+    <div id="sideFoot">
+      <button class="btn" style="width:100%;margin-bottom:6px" id="btnAutoLoad" onclick="autoLoad()" style="display:none">⚡ 自動載入影像</button>
+      <button class="btn" style="width:100%" onclick="document.getElementById('imgIn').click()">📁 手動選擇資料夾</button>
+      <input type="file" id="imgIn" webkitdirectory multiple style="display:none" onchange="loadImgFolder(this)">
+    </div>
+  </div>
+
+  <!-- Viewer -->
+  <div id="viewer">
+    <div id="imgArea">
+      <img id="mainImg" src="" alt="">
+      <canvas id="mCanvas"></canvas>
+      <div id="imgBadges">
+        <span class="imgBadge" id="imgLbl"></span>
+        <span class="imgBadge" id="imgSc"></span>
+      </div>
+      <div id="mHint"></div>
+      <!-- 圖片導覽：在圖片底部 -->
+      <div id="imgNavBar">
+        <button class="navImgBtn" onclick="chImg(-1)">‹ 上一張</button>
+        <span id="imgCtr">—</span>
+        <button class="navImgBtn" onclick="chImg(1)">下一張 ›</button>
+        <button class="navImgBtn" id="btnResetZoom" onclick="resetZoom()" style="font-size:11px;padding:2px 8px;opacity:0.5;display:none">⊙ 還原</button>
+      </div>
+    </div>
+    <div id="thumbBar"></div>
+  </div>
+
+  <!-- Panel -->
+  <div id="panel">
+    <div id="panelTabs">
+      <div class="pTab" data-t="A1" onclick="swTab('A1')">A1</div>
+      <div class="pTab" data-t="A2" onclick="swTab('A2')">A2</div>
+      <div class="pTab" data-t="A3" onclick="swTab('A3')">A3</div>
+      <div class="pTab" data-t="B1" onclick="swTab('B1')">B1</div>
+      <div class="pTab" data-t="B2" onclick="swTab('B2')">B2</div>
+      <div class="pTab" data-t="C1" onclick="swTab('C1')">C1</div>
+      <div class="pTab" data-t="C2" onclick="swTab('C2')">C2</div>
+      <div class="pTab" data-t="NOTE" onclick="swTab('NOTE')">備註</div>
+    </div>
+    <div id="panelBody">
+
+      <div class="pPane" id="pp-A1">
+        <div class="pTitle"><span style="color:var(--accent)">A1</span> 腹內食道長度</div>
+        <div class="pDesc">測量 GEJ 以上、橫膈以下的腹內食道長度。</div>
+        <div class="numBox">
+          <div class="numRow">
+            <input type="number" class="numIn" id="v-A1" step="0.1" min="0" placeholder="—" oninput="markF('A1')">
+            <span class="numUnit">mm</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="mBtn" id="mb-A1" onclick="togM('A1')" style="flex:1">📏 標點量測</button>
+            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-A2">
+        <div class="pTitle"><span style="color:var(--accent)">A2</span> 食道壁厚度</div>
+        <div class="pDesc">於最清楚截面量測食道壁厚度。</div>
+        <div class="numBox">
+          <div class="numRow">
+            <input type="number" class="numIn" id="v-A2" step="0.1" min="0" placeholder="—" oninput="markF('A2')">
+            <span class="numUnit">mm</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="mBtn" id="mb-A2" onclick="togM('A2')" style="flex:1">📏 標點量測</button>
+            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-A3">
+        <div class="pTitle"><span style="color:var(--accent)">A3</span> GEJ 可視化程度</div>
+        <div class="pDesc">評估胃食道接合處在超音波中的可見程度。</div>
+        <div class="optGroup" id="og-A3">
+          <button class="optBtn" data-v="0" onclick="pickO('A3',0)"><div class="optN">0</div><div class="optTxt">不可見</div></button>
+          <button class="optBtn" data-v="1" onclick="pickO('A3',1)"><div class="optN">1</div><div class="optTxt">部分可見</div></button>
+          <button class="optBtn" data-v="2" onclick="pickO('A3',2)"><div class="optN">2</div><div class="optTxt">完整可見</div></button>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-B1">
+        <div class="pTitle"><span style="color:var(--accent)">B1</span> 賁門壁厚度</div>
+        <div class="pDesc">量測賁門處胃壁最厚部位的厚度。</div>
+        <div class="numBox">
+          <div class="numRow">
+            <input type="number" class="numIn" id="v-B1" step="0.1" min="0" placeholder="—" oninput="markF('B1')">
+            <span class="numUnit">mm</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="mBtn" id="mb-B1" onclick="togM('B1')" style="flex:1">📏 標點量測</button>
+            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px" title="清除標記">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-B2">
+        <div class="pTitle"><span style="color:var(--accent)">B2</span> 賁門壁厚度（第二測）</div>
+        <div class="pDesc">同一位置的第二次獨立量測，供 ICC 計算使用。</div>
+        <div class="numBox">
+          <div class="numRow">
+            <input type="number" class="numIn" id="v-B2" step="0.1" min="0" placeholder="—" oninput="markF('B2')">
+            <span class="numUnit">mm</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="mBtn" id="mb-B2" onclick="togM('B2')" style="flex:1">📏 標點量測</button>
+            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px" title="清除標記">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-C1">
+        <div class="pTitle"><span style="color:var(--accent)">C1</span> Hiatal Hernia</div>
+        <div class="pDesc">評估是否存在食道裂孔疝氣。若有（≥1）請至 C2 記錄大小。</div>
+        <div class="optGroup" id="og-C1">
+          <button class="optBtn" data-v="0" onclick="pickO('C1',0)"><div class="optN">0</div><div class="optTxt">無</div></button>
+          <button class="optBtn" data-v="1" onclick="pickO('C1',1)"><div class="optN">1</div><div class="optTxt">疑似</div></button>
+          <button class="optBtn" data-v="2" onclick="pickO('C1',2)"><div class="optN">2</div><div class="optTxt">確定</div></button>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-C2">
+        <div class="pTitle"><span style="color:var(--accent)">C2</span> 疝氣大小</div>
+        <div class="pDesc">若 C1 ≥ 1，量測疝氣最大徑。無疝氣可留空。</div>
+        <div class="numBox">
+          <div class="numRow">
+            <input type="number" class="numIn" id="v-C2" step="0.1" min="0" placeholder="—" oninput="markF('C2')">
+            <span class="numUnit">cm</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="mBtn" id="mb-C2" onclick="togM('C2')" style="flex:1">📏 標點量測</button>
+            <button class="mBtn" onclick="clearCanvas()" style="flex:0 0 auto;padding:8px 12px">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pPane" id="pp-NOTE">
+        <div class="pTitle"><span style="color:#777">📝</span> 備註</div>
+        <div class="pDesc">特殊發現或影像品質說明。</div>
+        <div class="notesWrap">
+          <textarea id="v-NOTE" placeholder="例如：賁門顯示不清、影像品質差、懷疑 hiatal hernia..." oninput="markF('NOTE')"></textarea>
+        </div>
+      </div>
+
+    </div>
+    <div id="panelFoot">
+      <button id="btnSave" onclick="saveOnly()">儲存</button>
+      <div class="footRow" style="margin-top:6px;opacity:0.6">
+        <button class="footBtn" onclick="navPt(-1)" style="font-size:11px">← 上一位</button>
+        <span id="ptCtr" style="font-size:11px;color:var(--text3);align-self:center;text-align:center;flex:1"></span>
+        <button class="footBtn" onclick="navPt(1)" style="font-size:11px">下一位 →</button>
+      </div>
+      <div class="blindNote">⚑ 盲化 · PgUp/PgDn 換人 · ← → 換張</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 4: RESULTS
+============================================================ -->
+<div class="page" id="page-results">
+<div id="resWrap">
+  <div class="pageTitle" style="margin-bottom:4px">結果摘要</div>
+  <div class="pageSubtitle">量測完成後可在此查看統計，搭配病人分組 CSV 進行組間比較。</div>
+  <div id="resBody"></div>
+</div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+<script>
+// ── LOGIN ───────────────────────────────────────────────────
+const PW_HASH = '8d24ecf373401850fb8cd9969634db1d40fa6ac35d41cb65e1762cd10bda150b';
+
+async function doLogin() {
+  const val = document.getElementById('loginInput').value;
+  const err = document.getElementById('loginErr');
+  if (!val) return;
+  const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(val));
+  const hash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hash === PW_HASH) {
+    sessionStorage.setItem('gerd_auth','1');
+    document.getElementById('loginScreen').style.display = 'none';
+    setTimeout(autoLoad, 150);
+  } else {
+    err.textContent = '密碼錯誤';
+    document.getElementById('loginInput').value = '';
+    document.getElementById('loginInput').focus();
+    setTimeout(()=>err.textContent='', 2000);
+  }
+}
+
+// 已登入過（同一 session）直接略過
+if (sessionStorage.getItem('gerd_auth') === '1') {
+  document.getElementById('loginScreen').style.display = 'none';
+  window.addEventListener('load', () => setTimeout(autoLoad, 300));
+}
+
+// ── STATE ──────────────────────────────────────────────────
+const SK = 'gerd_sono_v1';
+const PN = ['A1','A2','B1','B2','C2'];   // numeric params
+const PS = ['A3','C1'];                  // select params
+const PA = ['A1','A2','A3','B1','B2','C1','C2','NOTE']; // all params
+
+let patients=[], ptFiles={}, ptScales={}, meas={};
+let grpData=[];
+let curPt=0, curImg=0, curURLs=[];
+let sfilt='all', ssearch='';
+let mParam=null, mPts=[], mScale=null;
+
+// ── NAVIGATION ─────────────────────────────────────────────
+function goto(pg){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.navBtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+pg).classList.add('active');
+  document.getElementById('nav-'+pg).classList.add('active');
+  if(pg==='results') renderResults();
+  if(pg==='overview') updateOvProgress();
+  if(pg==='groups') renderGrpPage();
+}
+
+// ── OVERVIEW ───────────────────────────────────────────────
+function updateOvProgress(){
+  const done=patients.filter(p=>isDone(p)).length, tot=patients.length;
+  document.getElementById('ovDone').textContent=done;
+  document.getElementById('ovTotal').textContent=tot;
+  document.getElementById('ovProg').style.width=tot?(done/tot*100)+'%':'0%';
+}
+
+// ── PATIENT DATA (硬寫) ─────────────────────────────────────
+const PATIENTS = [
+  {id:"36128695",grp:"CASE_A",cls:"LA-C",sex:"F",age:49.2},
+  {id:"33763698",grp:"CASE_A",cls:"LA-C",sex:"M",age:62.9},
+  {id:"4277989",grp:"CASE_A",cls:"LA-C",sex:"M",age:96.1},
+  {id:"30480183",grp:"CASE_A",cls:"LA-C",sex:"M",age:47.4},
+  {id:"40803369",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.8},
+  {id:"30566702",grp:"CASE_A",cls:"LA-C",sex:"F",age:76.1},
+  {id:"35280887",grp:"CASE_A",cls:"LA-C",sex:"M",age:66.2},
+  {id:"15046794",grp:"CASE_A",cls:"LA-C",sex:"M",age:59.2},
+  {id:"43652046",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.6},
+  {id:"38280363",grp:"CASE_A",cls:"LA-C",sex:"M",age:50.8},
+  {id:"31206185",grp:"CASE_A",cls:"LA-C",sex:"M",age:52.0},
+  {id:"36266521",grp:"CASE_A",cls:"LA-C",sex:"M",age:60.9},
+  {id:"12834525",grp:"CASE_A",cls:"LA-C",sex:"F",age:87.6},
+  {id:"24472831",grp:"CASE_A",cls:"LA-C",sex:"F",age:73.3},
+  {id:"13261557",grp:"CASE_A",cls:"LA-C",sex:"M",age:61.0},
+  {id:"13532597",grp:"CASE_A",cls:"LA-C",sex:"M",age:94.1},
+  {id:"35147354",grp:"CASE_A",cls:"LA-C",sex:"M",age:66.8},
+  {id:"447654",grp:"CASE_A",cls:"LA-C",sex:"M",age:95.2},
+  {id:"35147241",grp:"CASE_A",cls:"LA-C",sex:"M",age:58.2},
+  {id:"37760933",grp:"CASE_A",cls:"LA-C",sex:"M",age:76.2},
+  {id:"25116716",grp:"CASE_A",cls:"LA-D",sex:"M",age:52.5},
+  {id:"23940252",grp:"CASE_A",cls:"LA-C",sex:"M",age:49.7},
+  {id:"17673222",grp:"CASE_A",cls:"LA-C",sex:"F",age:61.5},
+  {id:"40475023",grp:"CASE_A",cls:"LA-C",sex:"M",age:61.8},
+  {id:"40543917",grp:"CASE_A",cls:"LA-C",sex:"M",age:65.5},
+  {id:"33973670",grp:"CASE_A",cls:"LA-D",sex:"F",age:55.8},
+  {id:"33282518",grp:"CASE_A",cls:"LA-C",sex:"M",age:58.1},
+  {id:"44402644",grp:"CASE_A",cls:"LA-D",sex:"M",age:54.2},
+  {id:"51226825",grp:"CASE_A",cls:"LA-C",sex:"M",age:54.1},
+  {id:"19299162",grp:"CASE_A",cls:"LA-C",sex:"M",age:66.2},
+  {id:"39298301",grp:"CASE_A",cls:"LA-D",sex:"M",age:61.5},
+  {id:"45167280",grp:"CASE_A",cls:"LA-C",sex:"M",age:37.8},
+  {id:"16393138",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.8},
+  {id:"34771658",grp:"CASE_A",cls:"LA-C",sex:"M",age:61.0},
+  {id:"6436813",grp:"CASE_A",cls:"LA-D",sex:"M",age:64.5},
+  {id:"11222405",grp:"CASE_A",cls:"LA-C",sex:"M",age:82.4},
+  {id:"22376665",grp:"CASE_A",cls:"LA-C",sex:"M",age:75.9},
+  {id:"31202989",grp:"CASE_A",cls:"LA-C",sex:"F",age:49.7},
+  {id:"22905142",grp:"CASE_A",cls:"LA-D",sex:"F",age:73.0},
+  {id:"34294649",grp:"CASE_A",cls:"LA-C",sex:"M",age:68.9},
+  {id:"29099807",grp:"CASE_A",cls:"LA-D",sex:"M",age:63.1},
+  {id:"42785057",grp:"CASE_A",cls:"LA-C",sex:"F",age:84.7},
+  {id:"49086626",grp:"CASE_A",cls:"LA-C",sex:"M",age:65.0},
+  {id:"31929143",grp:"CASE_A",cls:"LA-C",sex:"F",age:91.1},
+  {id:"27790507",grp:"CASE_A",cls:"LA-D",sex:"F",age:58.4},
+  {id:"14280401",grp:"CASE_A",cls:"LA-C",sex:"M",age:71.4},
+  {id:"35379829",grp:"CASE_A",cls:"LA-C",sex:"M",age:69.9},
+  {id:"37230527",grp:"CASE_A",cls:"LA-C",sex:"M",age:75.2},
+  {id:"19289464",grp:"CASE_A",cls:"LA-C",sex:"F",age:84.0},
+  {id:"48197688",grp:"CASE_A",cls:"LA-C",sex:"M",age:69.7},
+  {id:"45713017",grp:"CASE_A",cls:"LA-C",sex:"M",age:69.5},
+  {id:"5184509",grp:"CASE_A",cls:"LA-C",sex:"M",age:70.9},
+  {id:"33956433",grp:"CASE_A",cls:"LA-C",sex:"M",age:53.1},
+  {id:"50462196",grp:"CASE_A",cls:"LA-C",sex:"M",age:34.7},
+  {id:"34449757",grp:"CASE_A",cls:"LA-C",sex:"M",age:53.6},
+  {id:"26712743",grp:"CASE_A",cls:"LA-C",sex:"F",age:76.5},
+  {id:"31282378",grp:"CASE_A",cls:"LA-C",sex:"F",age:63.0},
+  {id:"44401754",grp:"CASE_A",cls:"LA-D",sex:"M",age:55.5},
+  {id:"50553510",grp:"CASE_A",cls:"LA-C",sex:"M",age:62.9},
+  {id:"20232751",grp:"CASE_A",cls:"LA-D",sex:"M",age:73.4},
+  {id:"49260379",grp:"CASE_A",cls:"LA-C",sex:"F",age:76.2},
+  {id:"27073309",grp:"CASE_A",cls:"LA-C",sex:"M",age:74.9},
+  {id:"46187671",grp:"CASE_A",cls:"LA-C",sex:"M",age:74.3},
+  {id:"27838615",grp:"CASE_A",cls:"LA-C",sex:"F",age:90.5},
+  {id:"12392153",grp:"CASE_A",cls:"LA-C",sex:"M",age:69.8},
+  {id:"46907055",grp:"CASE_A",cls:"LA-C",sex:"M",age:60.9},
+  {id:"22294344",grp:"CASE_A",cls:"LA-C",sex:"M",age:82.1},
+  {id:"19868269",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.2},
+  {id:"27932430",grp:"CASE_A",cls:"LA-C",sex:"M",age:57.2},
+  {id:"43497616",grp:"CASE_A",cls:"LA-D",sex:"M",age:37.9},
+  {id:"28137511",grp:"CASE_A",cls:"LA-C",sex:"F",age:62.8},
+  {id:"5868440",grp:"CASE_A",cls:"LA-C",sex:"F",age:65.2},
+  {id:"35068996",grp:"CASE_A",cls:"LA-C",sex:"M",age:63.2},
+  {id:"23497190",grp:"CASE_A",cls:"LA-C",sex:"F",age:69.4},
+  {id:"5937428",grp:"CASE_A",cls:"LA-C",sex:"F",age:73.2},
+  {id:"41619130",grp:"CASE_A",cls:"LA-C",sex:"M",age:66.6},
+  {id:"37235442",grp:"CASE_A",cls:"LA-C",sex:"M",age:64.2},
+  {id:"8948694",grp:"CASE_A",cls:"LA-C",sex:"M",age:77.8},
+  {id:"21244348",grp:"CASE_A",cls:"LA-C",sex:"M",age:36.3},
+  {id:"43820037",grp:"CASE_A",cls:"LA-C",sex:"M",age:65.6},
+  {id:"13400685",grp:"CASE_A",cls:"LA-C",sex:"M",age:51.1},
+  {id:"37626612",grp:"CASE_A",cls:"LA-C",sex:"M",age:61.3},
+  {id:"8942787",grp:"CASE_A",cls:"LA-C",sex:"M",age:95.0},
+  {id:"34918075",grp:"CASE_A",cls:"LA-C",sex:"M",age:53.3},
+  {id:"39701536",grp:"CASE_A",cls:"LA-D",sex:"M",age:63.2},
+  {id:"34768826",grp:"CASE_A",cls:"LA-D",sex:"M",age:100.6},
+  {id:"47987724",grp:"CASE_A",cls:"LA-C",sex:"M",age:59.4},
+  {id:"34610645",grp:"CASE_A",cls:"LA-D",sex:"M",age:69.7},
+  {id:"43824620",grp:"CASE_A",cls:"LA-C",sex:"F",age:63.7},
+  {id:"18835433",grp:"CASE_A",cls:"LA-C",sex:"M",age:66.5},
+  {id:"38905214",grp:"CASE_A",cls:"LA-C",sex:"M",age:36.7},
+  {id:"33822423",grp:"CASE_A",cls:"LA-D",sex:"M",age:57.4},
+  {id:"20287256",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.5},
+  {id:"12716631",grp:"CASE_A",cls:"LA-C",sex:"M",age:58.4},
+  {id:"1715975",grp:"CASE_A",cls:"LA-C",sex:"F",age:48.8},
+  {id:"34034667",grp:"CASE_A",cls:"LA-C",sex:"M",age:49.9},
+  {id:"49749306",grp:"CASE_A",cls:"LA-C",sex:"M",age:63.2},
+  {id:"1544554",grp:"CASE_A",cls:"LA-C",sex:"F",age:57.7},
+  {id:"26688313",grp:"CASE_A",cls:"LA-C",sex:"M",age:68.9},
+  {id:"22130912",grp:"CASE_A",cls:"LA-C",sex:"M",age:90.9},
+  {id:"37862605",grp:"CASE_A",cls:"LA-C",sex:"M",age:53.1},
+  {id:"46076339",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.1},
+  {id:"21344707",grp:"CASE_A",cls:"LA-C",sex:"M",age:90.6},
+  {id:"18161132",grp:"CASE_A",cls:"LA-D",sex:"M",age:78.0},
+  {id:"32136122",grp:"CASE_A",cls:"LA-D",sex:"M",age:43.3},
+  {id:"3159895",grp:"CASE_A",cls:"LA-C",sex:"M",age:70.8},
+  {id:"12482449",grp:"CASE_A",cls:"LA-C",sex:"F",age:65.7},
+  {id:"44152923",grp:"CASE_A",cls:"LA-C",sex:"F",age:66.8},
+  {id:"12496467",grp:"CASE_A",cls:"LA-C",sex:"M",age:98.5},
+  {id:"43329073",grp:"CASE_A",cls:"LA-C",sex:"M",age:56.0},
+  {id:"42785557",grp:"CASE_A",cls:"LA-C",sex:"M",age:67.0},
+  {id:"49947913",grp:"CASE_A",cls:"LA-D",sex:"M",age:78.8},
+  {id:"39708764",grp:"CASE_A",cls:"LA-C",sex:"M",age:74.6},
+  {id:"43093249",grp:"CASE_A",cls:"LA-C",sex:"M",age:72.0},
+  {id:"35483342",grp:"CASE_A",cls:"LA-C",sex:"M",age:88.9},
+  {id:"20752072",grp:"CASE_A",cls:"LA-D",sex:"M",age:56.2},
+  {id:"40180243",grp:"CASE_A",cls:"LA-C",sex:"M",age:60.4},
+  {id:"36471553",grp:"CASE_A",cls:"LA-C",sex:"M",age:57.7},
+  {id:"34553861",grp:"CASE_A",cls:"LA-C",sex:"M",age:54.0},
+  {id:"50766535",grp:"CASE_A",cls:"LA-C",sex:"M",age:58.2},
+  {id:"5495841",grp:"CASE_A",cls:"LA-C",sex:"M",age:60.6},
+  {id:"36929790",grp:"CASE_A",cls:"LA-D",sex:"M",age:40.6},
+  {id:"46074026",grp:"CASE_A",cls:"LA-D",sex:"M",age:49.7},
+  {id:"41152630",grp:"CASE_A",cls:"LA-C",sex:"F",age:100.9},
+  {id:"46079996",grp:"CASE_A",cls:"LA-C",sex:"M",age:68.2},
+  {id:"31060432",grp:"CASE_A",cls:"LA-D",sex:"M",age:73.3},
+  {id:"33636510",grp:"CASE_A",cls:"LA-D",sex:"M",age:71.2},
+  {id:"38977536",grp:"CASE_A",cls:"LA-C",sex:"F",age:101.2},
+  {id:"36052445",grp:"CASE_A",cls:"LA-C",sex:"M",age:60.8},
+  {id:"46291183",grp:"CASE_A",cls:"LA-C",sex:"M",age:55.2},
+  {id:"29581213",grp:"CASE_A",cls:"LA-C",sex:"M",age:69.0},
+  {id:"28790752",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:47.1},
+  {id:"28996409",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:60.7},
+  {id:"19360124",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:95.6},
+  {id:"34952277",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:47.1},
+  {id:"16240394",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:72.1},
+  {id:"36252478",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:76.0},
+  {id:"19953936",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:63.8},
+  {id:"8136876",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:55.3},
+  {id:"35497882",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.4},
+  {id:"34563285",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:48.8},
+  {id:"36477755",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:56.2},
+  {id:"25400731",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:58.2},
+  {id:"3800779",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:92.3},
+  {id:"23432168",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:73.2},
+  {id:"30411542",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:58.8},
+  {id:"19787010",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:94.3},
+  {id:"37921714",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:63.8},
+  {id:"19522282",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:94.5},
+  {id:"39411751",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:58.7},
+  {id:"4604391",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:71.8},
+  {id:"41468273",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:54.6},
+  {id:"10879228",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:44.8},
+  {id:"43679523",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:66.0},
+  {id:"32707952",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:64.8},
+  {id:"35834038",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:65.8},
+  {id:"43127135",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:56.7},
+  {id:"36288456",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:60.5},
+  {id:"24624951",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:57.8},
+  {id:"38150275",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:51.6},
+  {id:"41108332",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:66.3},
+  {id:"12863751",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:63.4},
+  {id:"15404714",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:41.1},
+  {id:"21872515",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:65.7},
+  {id:"19895546",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:56.0},
+  {id:"25668513",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:60.8},
+  {id:"32647215",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:80.1},
+  {id:"44150472",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:74.4},
+  {id:"34613666",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:53.0},
+  {id:"19731567",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:70.8},
+  {id:"34712599",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:65.2},
+  {id:"38283408",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:64.9},
+  {id:"4203229",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:88.0},
+  {id:"34566068",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:64.8},
+  {id:"42573751",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:87.0},
+  {id:"35120059",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:53.5},
+  {id:"10309372",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.8},
+  {id:"10049817",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:71.4},
+  {id:"16890678",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:73.1},
+  {id:"1517562",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:87.5},
+  {id:"19184384",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:70.3},
+  {id:"4744814",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.8},
+  {id:"6947586",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:67.6},
+  {id:"23258711",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:55.8},
+  {id:"42707846",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:36.7},
+  {id:"43705404",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:49.8},
+  {id:"35182184",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:74.9},
+  {id:"30332139",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:60.9},
+  {id:"21103560",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:57.7},
+  {id:"26664119",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:63.4},
+  {id:"35620678",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:78.1},
+  {id:"46869970",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:74.3},
+  {id:"49195597",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:73.9},
+  {id:"37676543",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:77.4},
+  {id:"16984160",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:93.8},
+  {id:"18142262",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:65.8},
+  {id:"10792015",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:56.6},
+  {id:"18550088",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:80.9},
+  {id:"40167519",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:62.5},
+  {id:"29865858",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:57.3},
+  {id:"20038920",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:37.6},
+  {id:"37422223",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:67.5},
+  {id:"20048195",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:63.0},
+  {id:"25267270",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.0},
+  {id:"32811942",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:70.8},
+  {id:"23907677",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:72.2},
+  {id:"40261618",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:69.4},
+  {id:"27893125",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:69.2},
+  {id:"16065080",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:74.2},
+  {id:"45939068",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:36.9},
+  {id:"20829305",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:64.2},
+  {id:"42993806",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:52.5},
+  {id:"37858325",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:64.7},
+  {id:"3615609",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:92.8},
+  {id:"35625140",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:49.6},
+  {id:"21919288",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:58.7},
+  {id:"180723",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:97.5},
+  {id:"49685361",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:58.9},
+  {id:"36973305",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:73.7},
+  {id:"1739997",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:67.7},
+  {id:"14432372",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.5},
+  {id:"44352821",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:41.1},
+  {id:"18978159",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:53.2},
+  {id:"32114742",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.5},
+  {id:"44152081",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:55.4},
+  {id:"39396582",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:47.8},
+  {id:"23504510",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:54.1},
+  {id:"5998798",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:65.2},
+  {id:"39057880",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:56.8},
+  {id:"8036860",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:72.9},
+  {id:"19357870",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:92.4},
+  {id:"32471902",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:57.4},
+  {id:"34614512",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.3},
+  {id:"31270130",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:91.8},
+  {id:"1889016",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:80.4},
+  {id:"39526675",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:44.2},
+  {id:"31933650",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:72.4},
+  {id:"27510243",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:66.1},
+  {id:"39200845",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:70.2},
+  {id:"12091837",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:102.2},
+  {id:"46517117",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:59.7},
+  {id:"17055991",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:69.4},
+  {id:"24856288",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:74.2},
+  {id:"38975201",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:73.2},
+  {id:"21831221",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:73.0},
+  {id:"35620418",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:84.8},
+  {id:"29959919",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:53.8},
+  {id:"43615163",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:62.3},
+  {id:"13519921",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:54.4},
+  {id:"31356011",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:55.7},
+  {id:"22236824",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:59.9},
+  {id:"20244762",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:59.0},
+  {id:"14024523",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:42.2},
+  {id:"19894065",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:45.8},
+  {id:"2023714",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:98.9},
+  {id:"32423680",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:63.2},
+  {id:"7279927",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:76.1},
+  {id:"19209224",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:69.8},
+  {id:"4461012",grp:"CTRL_A",cls:"Normal_esophagus",sex:"F",age:100.0},
+  {id:"42094484",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:56.2},
+  {id:"25007005",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:52.9},
+  {id:"45160790",grp:"CTRL_A",cls:"Normal_esophagus",sex:"M",age:68.7},
+  {id:"34790186",grp:"CASE_B",cls:"Barrett",sex:"M",age:72.2},
+  {id:"13276363",grp:"CASE_B",cls:"Barrett",sex:"F",age:77.2},
+  {id:"9326174",grp:"CASE_B",cls:"Barrett",sex:"M",age:75.9},
+  {id:"45739966",grp:"CASE_B",cls:"Barrett",sex:"M",age:54.2},
+  {id:"38572315",grp:"CASE_B",cls:"Barrett",sex:"M",age:59.9},
+  {id:"24712843",grp:"CASE_B",cls:"Barrett",sex:"M",age:73.8},
+  {id:"35786880",grp:"CASE_B",cls:"Barrett",sex:"M",age:78.2},
+  {id:"49947822",grp:"CASE_B",cls:"Barrett",sex:"M",age:36.8},
+  {id:"13053980",grp:"CASE_B",cls:"Barrett",sex:"M",age:73.5},
+  {id:"14246776",grp:"CASE_B",cls:"Barrett",sex:"F",age:69.9},
+  {id:"43250302",grp:"CASE_B",cls:"Barrett",sex:"M",age:59.0},
+  {id:"46075621",grp:"CASE_B",cls:"Barrett",sex:"M",age:47.1},
+  {id:"25787035",grp:"CASE_B",cls:"Barrett",sex:"F",age:55.9},
+  {id:"38718488",grp:"CASE_B",cls:"Barrett",sex:"F",age:61.5},
+  {id:"42888835",grp:"CASE_B",cls:"Barrett",sex:"M",age:39.1},
+  {id:"20872655",grp:"CASE_B",cls:"Barrett",sex:"F",age:59.9},
+  {id:"26298566",grp:"CASE_B",cls:"Barrett",sex:"F",age:57.9},
+  {id:"45553944",grp:"CASE_B",cls:"Barrett",sex:"M",age:49.7},
+  {id:"34639184",grp:"CASE_B",cls:"Barrett",sex:"M",age:64.7},
+  {id:"45667058",grp:"CASE_B",cls:"Barrett",sex:"M",age:49.8},
+  {id:"14708248",grp:"CASE_B",cls:"Barrett",sex:"M",age:87.1},
+  {id:"45194716",grp:"CASE_B",cls:"Barrett",sex:"M",age:47.6},
+  {id:"30424261",grp:"CASE_B",cls:"Barrett",sex:"M",age:51.7},
+  {id:"4897998",grp:"CASE_B",cls:"Barrett",sex:"M",age:50.6},
+  {id:"37177665",grp:"CASE_B",cls:"Barrett",sex:"F",age:70.9},
+  {id:"36473548",grp:"CASE_B",cls:"Barrett",sex:"M",age:74.1},
+  {id:"31364202",grp:"CASE_B",cls:"Barrett",sex:"F",age:60.0},
+  {id:"13886016",grp:"CASE_B",cls:"Barrett",sex:"M",age:71.8},
+  {id:"20654346",grp:"CASE_B",cls:"Barrett",sex:"F",age:64.7},
+  {id:"41341553",grp:"CASE_B",cls:"Barrett",sex:"M",age:53.1},
+  {id:"36422885",grp:"CASE_B",cls:"Barrett",sex:"M",age:66.5},
+  {id:"45169402",grp:"CASE_B",cls:"Barrett",sex:"F",age:75.8},
+  {id:"42263149",grp:"CASE_B",cls:"Barrett",sex:"M",age:56.1},
+  {id:"30312200",grp:"CASE_B",cls:"Barrett",sex:"M",age:91.0},
+  {id:"51122339",grp:"CASE_B",cls:"Barrett",sex:"F",age:29.2},
+  {id:"39155607",grp:"CASE_B",cls:"Barrett",sex:"M",age:63.5},
+  {id:"42279403",grp:"CASE_B",cls:"Barrett",sex:"F",age:52.1},
+  {id:"38766664",grp:"CASE_B",cls:"Barrett",sex:"M",age:63.6},
+  {id:"44396454",grp:"CASE_B",cls:"Barrett",sex:"M",age:46.7},
+  {id:"4156836",grp:"CASE_B",cls:"Barrett",sex:"M",age:60.2},
+  {id:"14970093",grp:"CASE_B",cls:"Barrett",sex:"F",age:41.1},
+  {id:"43925253",grp:"CASE_B",cls:"Barrett",sex:"M",age:48.3},
+  {id:"14883648",grp:"CASE_B",cls:"Barrett",sex:"M",age:66.2},
+  {id:"30923274",grp:"CASE_B",cls:"Barrett",sex:"M",age:64.0},
+  {id:"29669361",grp:"CASE_B",cls:"Barrett",sex:"M",age:49.5},
+  {id:"8700650",grp:"CASE_B",cls:"Barrett",sex:"M",age:93.3},
+  {id:"19289475",grp:"CASE_B",cls:"Barrett",sex:"M",age:64.9},
+  {id:"44400228",grp:"CASE_B",cls:"Barrett",sex:"M",age:71.2},
+  {id:"30104882",grp:"CASE_B",cls:"Barrett",sex:"F",age:74.6},
+  {id:"9460075",grp:"CASE_B",cls:"Barrett",sex:"F",age:73.2},
+  {id:"29892384",grp:"CASE_B",cls:"Barrett",sex:"M",age:62.1},
+  {id:"13668230",grp:"CASE_B",cls:"Barrett",sex:"F",age:71.2},
+  {id:"43453209",grp:"CASE_B",cls:"Barrett",sex:"M",age:45.2},
+  {id:"41068002",grp:"CASE_B",cls:"Barrett",sex:"M",age:62.8},
+  {id:"40196701",grp:"CASE_B",cls:"Barrett",sex:"M",age:55.0},
+  {id:"7928032",grp:"CASE_B",cls:"Barrett",sex:"M",age:97.6},
+  {id:"22427812",grp:"CASE_B",cls:"Barrett",sex:"F",age:54.4},
+  {id:"49183291",grp:"CASE_B",cls:"Barrett",sex:"M",age:36.0},
+  {id:"14451548",grp:"CASE_B",cls:"Barrett",sex:"M",age:101.0},
+  {id:"9246995",grp:"CASE_B",cls:"Barrett",sex:"M",age:73.1},
+  {id:"38364033",grp:"CASE_B",cls:"Barrett",sex:"M",age:33.3},
+  {id:"39518542",grp:"CASE_B",cls:"Barrett",sex:"M",age:59.8},
+  {id:"33960348",grp:"CASE_B",cls:"Barrett",sex:"F",age:74.3},
+  {id:"25757317",grp:"CASE_B",cls:"Barrett",sex:"F",age:60.8},
+  {id:"48322469",grp:"CASE_B",cls:"Barrett",sex:"M",age:59.8},
+  {id:"26146849",grp:"CASE_B",cls:"Barrett",sex:"M",age:76.0},
+  {id:"16979718",grp:"CASE_B",cls:"Barrett",sex:"M",age:55.1},
+  {id:"39906724",grp:"CASE_B",cls:"Barrett",sex:"M",age:63.1},
+  {id:"36449408",grp:"CASE_B",cls:"Barrett",sex:"M",age:75.4},
+  {id:"25137400",grp:"CASE_B",cls:"Barrett",sex:"M",age:71.6},
+  {id:"38915467",grp:"CASE_B",cls:"Barrett",sex:"M",age:69.1},
+  {id:"47814971",grp:"CASE_B",cls:"Barrett",sex:"M",age:44.9},
+  {id:"36728479",grp:"CASE_B",cls:"Barrett",sex:"M",age:57.1},
+  {id:"35912164",grp:"CASE_B",cls:"Barrett",sex:"F",age:51.6},
+  {id:"36772197",grp:"CASE_B",cls:"Barrett",sex:"M",age:62.7},
+  {id:"30509401",grp:"CASE_B",cls:"Barrett",sex:"F",age:85.2},
+  {id:"12774060",grp:"CASE_B",cls:"Barrett",sex:"M",age:68.0},
+  {id:"44154714",grp:"CASE_B",cls:"Barrett",sex:"M",age:55.3},
+  {id:"19358453",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:76.2},
+  {id:"46072213",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:75.0},
+  {id:"5286420",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:73.3},
+  {id:"45163120",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:52.8},
+  {id:"9065901",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:61.5},
+  {id:"22698700",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:69.0},
+  {id:"10695268",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:73.8},
+  {id:"28118425",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:37.6},
+  {id:"17990895",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:73.9},
+  {id:"14209600",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:73.8},
+  {id:"24385022",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:57.8},
+  {id:"23560943",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:51.3},
+  {id:"42747637",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:53.9},
+  {id:"23512212",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:56.5},
+  {id:"24009538",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:42.5},
+  {id:"25748758",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:61.6},
+  {id:"26521277",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:60.1},
+  {id:"4497056",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:50.8},
+  {id:"32916248",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:66.3},
+  {id:"31302804",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:54.4},
+  {id:"8655503",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:84.2},
+  {id:"38376919",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:47.4},
+  {id:"29554550",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:53.5},
+  {id:"50179981",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:53.0},
+  {id:"13250481",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:67.2},
+  {id:"34330897",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:75.2},
+  {id:"40973191",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:59.7},
+  {id:"44372272",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:71.8},
+  {id:"18646963",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:63.2},
+  {id:"27595320",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:52.5},
+  {id:"20460199",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:69.4},
+  {id:"36464332",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:73.2},
+  {id:"38281139",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:56.1},
+  {id:"6829625",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:95.9},
+  {id:"30386062",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:34.1},
+  {id:"41717515",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:67.7},
+  {id:"38393963",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:55.3},
+  {id:"26616171",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:64.8},
+  {id:"39518495",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:46.2},
+  {id:"37933270",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:62.6},
+  {id:"21164341",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:44.2},
+  {id:"48883632",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:46.2},
+  {id:"18067022",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:70.4},
+  {id:"32967901",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:68.0},
+  {id:"45160972",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:52.7},
+  {id:"2608368",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:94.7},
+  {id:"18282967",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:67.7},
+  {id:"11409986",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:73.4},
+  {id:"36380264",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:73.0},
+  {id:"28053852",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:77.1},
+  {id:"41666222",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:64.3},
+  {id:"17239655",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:67.5},
+  {id:"12861288",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:46.4},
+  {id:"18121181",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:60.3},
+  {id:"43821938",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:55.3},
+  {id:"112130",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:102.6},
+  {id:"40391659",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:50.6},
+  {id:"44210040",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:38.6},
+  {id:"7015783",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:99.6},
+  {id:"39703930",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:74.7},
+  {id:"21631345",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:37.8},
+  {id:"18047820",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:58.7},
+  {id:"37573787",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:71.2},
+  {id:"18802498",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:63.2},
+  {id:"12683419",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:61.5},
+  {id:"15196802",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:72.8},
+  {id:"43124998",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:51.7},
+  {id:"17453484",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:67.1},
+  {id:"23368674",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:77.0},
+  {id:"1813463",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:66.9},
+  {id:"34136759",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:73.7},
+  {id:"23275005",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:44.8},
+  {id:"43965555",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:57.3},
+  {id:"22869289",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:56.5},
+  {id:"40136525",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:65.1},
+  {id:"23378963",grp:"CTRL_B",cls:"Normal_esophagus",sex:"F",age:82.8},
+  {id:"31078394",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:70.3},
+  {id:"21184394",grp:"CTRL_B",cls:"Normal_esophagus",sex:"M",age:54.6},
+];
+
+// Build lookup: id → patient
+const PT_MAP = Object.fromEntries(PATIENTS.map(p => [p.id, p]));
+grpData = PATIENTS; // initialise grpData from hardcoded list
+
+// ── GROUPS ───────────────────────────────────────────────────
+function renderGrpPage(){
+  const colors={CASE_A:'var(--accent)',CASE_B:'#64B5F6',CTRL_A:'#EF9A9A',CTRL_B:'#FFE082'};
+  const lbls={CASE_A:'CASE A (LA-C/D)',CASE_B:'CASE B (Barrett\'s)',CTRL_A:'Control A',CTRL_B:'Control B'};
+  const cnts={CASE_A:0,CTRL_A:0,CASE_B:0,CTRL_B:0};
+  PATIENTS.forEach(p=>cnts[p.grp]++);
+  document.getElementById('grpStatGrid').innerHTML=
+    Object.entries(cnts).map(([g,n])=>`
+      <div class="grpStat">
+        <div class="n" style="color:${colors[g]}">${n}</div>
+        <div class="lbl">${lbls[g]}</div>
+      </div>`).join('');
+  renderGrpTable(PATIENTS);
+}
+
+function renderGrpTable(data){
+  const tm={CASE_A:'tag-CA',CASE_B:'tag-CB',CTRL_A:'tag-CtA',CTRL_B:'tag-CtB'};
+  document.getElementById('grpTbody').innerHTML=data.map(d=>{
+    const cnt=cntFilled(d.id), done=isDone(d.id);
+    return `<tr>
+      <td>${d.id}</td>
+      <td><span class="grpTag ${tm[d.grp]}">${d.grp.replace('_',' ')}</span></td>
+      <td>${d.cls}</td>
+      <td>${d.sex}</td>
+      <td>${d.age}</td>
+      <td style="color:${done?'var(--accent)':cnt?'var(--warn)':'var(--text3)'}">${done?'✓ 完成':cnt?cnt+'/8':'—'}</td>
+    </tr>`;}).join('');
+  document.getElementById('grpCount').textContent=`顯示 ${data.length} / ${PATIENTS.length} 筆`;
+}
+
+// filterGrpTable 已移到 GROUPS FILTER BUTTONS 區塊
+
+// ── IMAGE LOADING ───────────────────────────────────────────
+function loadImgFolder(inp){
+  const all=Array.from(inp.files);
+  const imgs=all.filter(f=>/\.(jpg|jpeg|png)$/i.test(f.name));
+  const mds=all.filter(f=>/\.md$/i.test(f.name));
+  if(!imgs.length){alert('未找到影像檔案');return;}
+  ptFiles={};
+  imgs.forEach(f=>{
+    const cid=f.name.split('_')[0];
+    if(!ptFiles[cid]) ptFiles[cid]=[];
+    ptFiles[cid].push(f);
+  });
+  ptScales={};
+  const ps=mds.map(f=>f.text().then(t=>{
+    const key=f.name.replace(/\.md$/i,'');
+    const m=t.match(/PhysicalDeltaY[:\s]+([0-9.]+)/i);
+    if(m){const cid=key.split('_')[0];
+      if(!ptScales[cid]) ptScales[cid]={};
+      ptScales[cid][key]=parseFloat(m[1]);}
+  }).catch(()=>{}));
+  Promise.all(ps).then(()=>{
+    patients=Object.keys(ptFiles).sort();
+    const sv=localStorage.getItem(SK);
+    if(sv){try{const p=JSON.parse(sv);
+      if(Object.keys(p).length&&confirm(`找到 ${Object.keys(p).length} 筆已儲存紀錄，是否載入？`)) meas=p;
+    }catch(e){}}
+    curPt=Math.max(0,patients.findIndex(p=>!isDone(p)));
+    renderSide(); loadPt(curPt);
+    document.getElementById('blindBadge').style.display='inline-block';
+    document.getElementById('btnExport').style.display='inline-block';
+    updateOvProgress();
+  });
+}
+
+// ── PATIENT ─────────────────────────────────────────────────
+// Get URL for a patient's image (works for both File objects and URL items)
+function getItemUrl(item) {
+  return item.url ? item.url : URL.createObjectURL(item);
+}
+function isFileObj(item) { return item instanceof File; }
+
+function loadPt(i){
+  cancelM(); curImg=0;
+  // Revoke only object URLs (not server URLs)
+  curURLs.forEach(u=>{ if(u.startsWith('blob:')) URL.revokeObjectURL(u); }); curURLs=[];
+  const cid=patients[i], items=ptFiles[cid]||[];
+  curURLs=items.map(item=>getItemUrl(item));
+  const bar=document.getElementById('thumbBar'); bar.innerHTML='';
+  curURLs.forEach((u,j)=>{
+    const img=document.createElement('img');
+    img.src=u; img.className='thumb'+(j===0?' active':'');
+    img.title=items[j].name; img.onclick=()=>showImg(j);
+    bar.appendChild(img);
+  });
+  showImg(0); loadMeas(cid); renderSide(); swTab('B1');
+  const el=document.getElementById('spi-'+cid);
+  if(el) el.scrollIntoView({block:'nearest'});
+}
+
+function showImg(i){
+  const cid=patients[curPt], items=ptFiles[cid]||[];
+  if(i<0||i>=items.length) return; curImg=i;
+  const el=document.getElementById('mainImg');
+  el.src=curURLs[i];
+  document.querySelectorAll('.thumb').forEach((t,j)=>t.classList.toggle('active',j===i));
+  const parts=items[i].name.replace(/\.[^.]+$/,'').split('_');
+  document.getElementById('imgLbl').textContent=parts.length>1?parts.slice(1,-1).join(' · '):items[i].name;
+  document.getElementById('imgCtr').textContent=`${i+1} / ${items.length}`;
+  const key=items[i].name.replace(/\.[^.]+$/,'');
+  mScale=(ptScales[cid]||{})[key]||null;
+  document.getElementById('imgSc').textContent=mScale?`${mScale} px/mm`:'比例尺未知';
+  resetZoom();
+  el.onload=()=>{ resetZoom(); posCanvas(); };
+  if(el.complete&&el.naturalWidth){ resetZoom(); posCanvas(); }
+  cancelM();
+}
+
+function chImg(d){
+  const n=(ptFiles[patients[curPt]]||[]).length;
+  const nx=curImg+d; if(nx>=0&&nx<n) showImg(nx);
+}
+
+// ── ZOOM / PAN ───────────────────────────────────────────────
+let vZoom=1, vPanX=0, vPanY=0;
+let vDrag=false, vDragLast={x:0,y:0};
+
+function applyImgTransform(){
+  const img=document.getElementById('mainImg');
+  img.style.transform=`translate(calc(-50% + ${vPanX}px), calc(-50% + ${vPanY}px)) scale(${vZoom})`;
+  document.getElementById('btnResetZoom').style.display=vZoom!==1||vPanX!==0||vPanY!==0?'inline-block':'none';
+  requestAnimationFrame(posCanvas);
+}
+
+function resetZoom(){
+  vZoom=1; vPanX=0; vPanY=0;
+  applyImgTransform();
+}
+
+const imgArea=document.getElementById('imgArea');
+
+imgArea.addEventListener('wheel',e=>{
+  e.preventDefault();
+  if(mParam) return; // 量測中不縮放
+  const ar=imgArea.getBoundingClientRect();
+  const cx=e.clientX-ar.left-ar.width/2;
+  const cy=e.clientY-ar.top-ar.height/2;
+  const d=e.deltaY<0?1.15:1/1.15;
+  vPanX=cx-(cx-vPanX)*d;
+  vPanY=cy-(cy-vPanY)*d;
+  vZoom=Math.max(0.5,Math.min(20,vZoom*d));
+  applyImgTransform();
+},{passive:false});
+
+imgArea.addEventListener('mousedown',e=>{
+  if(mParam) return;
+  vDrag=true; vDragLast={x:e.clientX,y:e.clientY};
+  imgArea.style.cursor='grabbing';
+});
+document.addEventListener('mousemove',e=>{
+  if(!vDrag) return;
+  vPanX+=e.clientX-vDragLast.x;
+  vPanY+=e.clientY-vDragLast.y;
+  vDragLast={x:e.clientX,y:e.clientY};
+  applyImgTransform();
+});
+document.addEventListener('mouseup',()=>{
+  vDrag=false;
+  imgArea.style.cursor=mParam?'crosshair':'grab';
+});
+imgArea.addEventListener('dblclick',()=>{ if(!mParam) resetZoom(); });
+
+// ── CANVAS ──────────────────────────────────────────────────
+const cv=document.getElementById('mCanvas');
+const cx=cv.getContext('2d');
+
+function posCanvas(){
+  const img=document.getElementById('mainImg');
+  const ar=document.getElementById('imgArea');
+  if(!img.naturalWidth) return;
+  const ir=img.getBoundingClientRect(), ar2=ar.getBoundingClientRect();
+  cv.style.left=(ir.left-ar2.left)+'px'; cv.style.top=(ir.top-ar2.top)+'px';
+  cv.width=ir.width; cv.height=ir.height;
+  cv.style.width=ir.width+'px'; cv.style.height=ir.height+'px';
+  redraw();
+}
+window.addEventListener('resize',posCanvas);
+
+function togM(p){
+  if(mParam===p){cancelM();return;}
+  cancelM(); mParam=p; mPts=[];
+  cv.classList.add('measuring');
+  const b=document.getElementById('mb-'+p);
+  if(b){b.classList.add('on');b.textContent='✕ 取消量測';}
+  hint('點選第一個量測點（Esc 取消）');
+}
+function cancelM(){
+  if(!mParam) return;
+  const b=document.getElementById('mb-'+mParam);
+  if(b){b.classList.remove('on');b.textContent='📏 標點量測';}
+  mParam=null; mPts=[]; cv.classList.remove('measuring');
+  document.getElementById('mHint').style.display='none'; redraw();
+}
+
+cv.addEventListener('click',e=>{
+  if(!mParam) return;
+  const r=cv.getBoundingClientRect();
+  mPts.push({x:e.clientX-r.left,y:e.clientY-r.top});
+  redraw();
+  if(mPts.length===1){hint('點選第二個量測點');return;}
+  if(mPts.length===2){
+    const [p1,p2]=mPts;
+    const pxD=Math.hypot(p2.x-p1.x,p2.y-p1.y);
+    const img=document.getElementById('mainImg');
+    const ratio=img.naturalWidth/img.getBoundingClientRect().width;
+    const pxO=pxD*ratio;
+    let val,unit;
+    if(mScale){const mm=pxO/mScale; val=mParam==='C2'?(mm/10).toFixed(2):mm.toFixed(1); unit=mParam==='C2'?'cm':'mm';}
+    else{val=pxD.toFixed(0);unit='px（比例尺未知）';}
+    drawFinal(p1,p2,`${val} ${unit}`);
+    const inp=document.getElementById('v-'+mParam);
+    if(inp&&mScale){inp.value=val;markF(mParam);}
+    const b=document.getElementById('mb-'+mParam);
+    if(b){b.classList.remove('on');b.textContent='📏 標點量測';}
+    document.getElementById('mHint').style.display='none';
+    mParam=null; cv.classList.remove('measuring');
+  }
+});
+
+cv.addEventListener('mousemove',e=>{
+  if(!mParam||mPts.length!==1) return;
+  const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+  redraw();
+  cx.beginPath(); cx.moveTo(mPts[0].x,mPts[0].y); cx.lineTo(x,y);
+  cx.strokeStyle='rgba(255,200,0,.5)'; cx.lineWidth=1.5; cx.setLineDash([4,3]); cx.stroke(); cx.setLineDash([]);
+});
+
+function clearCanvas(){
+  cancelM(); mPts=[];
+  cx.clearRect(0,0,cv.width,cv.height);
+}
+function redraw(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  mPts.forEach((p,i)=>{
+    cx.beginPath(); cx.arc(p.x,p.y,3,0,Math.PI*2);
+    cx.fillStyle=i===0?'#4CAF50':'#ff9800'; cx.fill();
+    cx.strokeStyle='#fff'; cx.lineWidth=1; cx.stroke();
+  });
+}
+function drawFinal(p1,p2,lbl){
+  redraw();
+  cx.beginPath(); cx.moveTo(p1.x,p1.y); cx.lineTo(p2.x,p2.y);
+  cx.strokeStyle='#ffcc00'; cx.lineWidth=2; cx.stroke();
+  const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2-14;
+  cx.font='bold 13px sans-serif';
+  const tw=cx.measureText(lbl).width;
+  cx.fillStyle='rgba(0,0,0,.8)'; cx.fillRect(mx-tw/2-6,my-14,tw+12,20);
+  cx.fillStyle='#ffcc00'; cx.textAlign='center'; cx.fillText(lbl,mx,my); cx.textAlign='left';
+}
+function hint(t){const h=document.getElementById('mHint');h.textContent=t;h.style.display='block';}
+
+// ── TABS ────────────────────────────────────────────────────
+function swTab(t){
+  document.querySelectorAll('.pTab').forEach(x=>x.classList.toggle('active',x.dataset.t===t));
+  document.querySelectorAll('.pPane').forEach(x=>x.classList.toggle('active',x.id==='pp-'+t));
+  cancelM();
+}
+function markF(p){updateDots();}
+function updateDots(){
+  const v=getVals();
+  PA.forEach(p=>{
+    const t=document.querySelector(`.pTab[data-t="${p}"]`);
+    if(t) t.classList.toggle('filled',v[p]!==undefined&&v[p]!=='');
+  });
+}
+
+// ── MEASUREMENTS ────────────────────────────────────────────
+function loadMeas(cid){
+  const m=meas[cid]||{};
+  PN.forEach(p=>{const e=document.getElementById('v-'+p);if(e)e.value=m[p]!==undefined?m[p]:'';});
+  PS.forEach(p=>{
+    const v=m[p]!==undefined?parseInt(m[p]):null;
+    document.querySelectorAll(`#og-${p} .optBtn`).forEach(b=>b.classList.toggle('sel',parseInt(b.dataset.v)===v));
+  });
+  const n=document.getElementById('v-NOTE'); if(n) n.value=m.NOTE||'';
+  updateDots();
+}
+
+function getVals(){
+  const d={};
+  PN.forEach(p=>{const e=document.getElementById('v-'+p);if(e)d[p]=e.value;});
+  PS.forEach(p=>{const s=document.querySelector(`#og-${p} .optBtn.sel`);d[p]=s?s.dataset.v:'';});
+  const n=document.getElementById('v-NOTE');if(n)d.NOTE=n.value;
+  return d;
+}
+
+function pickO(p,v){
+  document.querySelectorAll(`#og-${p} .optBtn`).forEach(b=>b.classList.toggle('sel',parseInt(b.dataset.v)===v));
+  const cid=patients[curPt];
+  if(!meas[cid]) meas[cid]={};
+  meas[cid][p]=v.toString();
+  localStorage.setItem(SK,JSON.stringify(meas));
+  updateDots(); renderSide(); updateOvProgress();
+}
+
+function saveOnly(){
+  const cid=patients[curPt];
+  meas[cid]={...getVals(),ts:new Date().toISOString()};
+  localStorage.setItem(SK,JSON.stringify(meas));
+  updateDots(); renderSide(); updateOvProgress(); flashSave();
+}
+
+function saveNext(){
+  saveOnly();
+  for(let i=curPt+1;i<patients.length;i++){
+    if(!isDone(patients[i])){curPt=i;loadPt(i);return;}
+  }
+  if(patients.every(p=>isDone(p))) alert('🎉 所有病人已完成！請匯出 CSV。');
+  else navPt(1);
+}
+
+function navPt(d){
+  const n=curPt+d;
+  if(n>=0&&n<patients.length){curPt=n;loadPt(n);}
+}
+
+function flashSave(){
+  const b=document.getElementById('btnSave'), o=b.textContent;
+  b.textContent='✓ 已儲存'; b.style.background='#388E3C';
+  setTimeout(()=>{b.textContent=o;b.style.background='';},700);
+}
+
+function isDone(cid){
+  const m=meas[cid]; if(!m) return false;
+  return (m.B1!==undefined&&m.B1!=='')&&(m.A3!==undefined&&m.A3!=='')&&
+         (m.B2!==undefined&&m.B2!=='')&&(m.C1!==undefined&&m.C1!=='');
+}
+function cntFilled(cid){
+  const m=meas[cid]; if(!m) return 0;
+  return PA.filter(p=>m[p]!==undefined&&m[p]!=='').length;
+}
+
+// ── SIDEBAR ─────────────────────────────────────────────────
+function renderSide(){
+  const c=document.getElementById('sideList');
+  const done=patients.filter(p=>isDone(p)).length;
+  document.getElementById('sideCnt').textContent=`${done}/${patients.length}`;
+  document.getElementById('ptCtr').textContent=patients.length?`第 ${curPt+1} / ${patients.length} 位`:'';
+  const filtered=patients.map((cid,i)=>({cid,i})).filter(({cid})=>{
+    if(ssearch&&!cid.includes(ssearch)) return false;
+    if(sfilt==='done'&&!isDone(cid)) return false;
+    if(sfilt==='todo'&&isDone(cid)) return false;
+    return true;
+  });
+  if(!filtered.length){c.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">無結果</div>';return;}
+  c.innerHTML=filtered.map(({cid,i})=>{
+    const cnt=cntFilled(cid), dot=cnt===0?'sdNone':isDone(cid)?'sdDone':'sdPart';
+    return `<div class="sideItem ${i===curPt?'cur':''}" id="spi-${cid}" onclick="curPt=${i};loadPt(${i})">
+      <div class="sideDot ${dot}"></div>
+      <div><div class="sideCid">${cid}</div><div class="sideImgs">${(ptFiles[cid]||[]).length} 張</div></div>
+      <div class="sideProg">${cnt}/${PA.length}</div>
+    </div>`;}).join('');
+}
+function filterSide(t){ssearch=t.trim();renderSide();}
+function setSF(f,b){sfilt=f;document.querySelectorAll('.sF').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderSide();}
+
+// ── RESULTS ─────────────────────────────────────────────────
+function renderResults(){
+  const body=document.getElementById('resBody');
+  if(!patients.length){
+    body.innerHTML='<div class="emptyState"><div class="emptyIcon">📊</div><div class="emptyText">請先在「閱片」頁面載入影像。</div></div>';
+    return;
+  }
+  const done=patients.filter(p=>isDone(p)).length, tot=patients.length;
+  const pct=tot?Math.round(done/tot*100):0;
+  const pStats=PA.map(p=>{
+    const f=patients.filter(cid=>{const m=meas[cid];return m&&m[p]!==undefined&&m[p]!=='';}).length;
+    return{p,f,pct:tot?Math.round(f/tot*100):0};
+  });
+  const b1v=patients.map(cid=>{const m=meas[cid];return m&&m.B1?parseFloat(m.B1):null;}).filter(v=>v!==null&&!isNaN(v));
+  const b1avg=b1v.length?(b1v.reduce((a,b)=>a+b,0)/b1v.length).toFixed(2):'—';
+  const b1min=b1v.length?Math.min(...b1v).toFixed(1):'—';
+  const b1max=b1v.length?Math.max(...b1v).toFixed(1):'—';
+  body.innerHTML=`
+    <div class="grid2 mb16">
+      <div class="card">
+        <div class="cardTitle">整體進度</div>
+        <div class="statBig">${pct}%</div>
+        <div class="statSub">${done} / ${tot} 病人完成（定義：B1+A3+B2+C1 均已填）</div>
+        <div class="progressBar"><div class="progressFill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="card">
+        <div class="cardTitle">B1 賁門壁厚度（${b1v.length} 筆）</div>
+        <div class="statBig" style="color:var(--warn)">${b1avg}</div>
+        <div class="statSub">mm 平均值・範圍 ${b1min} – ${b1max} mm</div>
+      </div>
+    </div>
+    <div class="card mb16">
+      <div class="cardTitle">各參數完成率</div>
+      <table class="paramTable">
+        <thead><tr><th>參數</th><th>已填</th><th>完成率</th><th style="width:120px"></th></tr></thead>
+        <tbody>${pStats.map(s=>`<tr>
+          <td><span class="pCode ${s.p==='B1'?'w':''}">${s.p}</span></td>
+          <td>${s.f} / ${tot}</td><td>${s.pct}%</td>
+          <td><div class="progressBar"><div class="progressFill" style="width:${s.pct}%"></div></div></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    ${grpData.length?`<div class="card mb16"><div class="cardTitle">組間比較</div>
+      <p style="color:var(--text2);font-size:13px;padding:6px 0">
+        已載入 ${grpData.length} 筆分組資料。閱片全部完成後，匯出 CSV 搭配統計軟體進行 ROC、logistic regression 及 ICC 分析。
+      </p></div>`:''}
+    <button class="btn success" onclick="exportCSV()">📊 匯出量測 CSV</button>
+  `;
+}
+
+// ── CSV EXPORT ───────────────────────────────────────────────
+function exportCSV(){
+  const hdr=['ChartID','A1_mm','A2_mm','A3','B1_mm','B2','C1','C2_cm','Notes','Timestamp'];
+  const rows=[hdr.join(',')];
+  patients.forEach(cid=>{
+    const d=meas[cid]||{};
+    rows.push([cid,d.A1||'',d.A2||'',d.A3||'',d.B1||'',d.B2||'',d.C1||'',d.C2||'',
+      '"'+(d.NOTE||'').replace(/"/g,'""')+'"',d.ts||''].join(','));
+  });
+  const blob=new Blob(['﻿'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`sono_meas_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ── LOCAL SERVER AUTO-LOAD ───────────────────────────────────
+const IS_LOCAL = location.protocol === 'http:' &&
+  (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+
+document.getElementById('btnAutoLoad').style.display = 'block';
+
+async function autoLoad() {
+  if (autoLoad.loading || Object.keys(ptFiles).length) return;
+  autoLoad.loading = true;
+  const btn = document.getElementById('btnAutoLoad');
+  if (btn) { btn.textContent = '⏳ 載入中...'; btn.disabled = true; }
+
+  let allItems = await loadManifest();
+
+  if (!allItems.length && IS_LOCAL) {
+    const tryPaths = ['/ready/', '/converter/output/'];
+    for (const base of tryPaths) {
+      try {
+        const items = await crawlDir(base);
+        if (items.length > 0) { allItems = items; break; }
+      } catch(e) {}
+    }
+  }
+
+  if (!allItems.length) {
+    if (btn) { btn.textContent = '⚡ 自動載入影像'; btn.disabled = false; }
+    autoLoad.loading = false;
+    alert('找不到影像資料，請確認 ready/manifest.json 已上傳，或使用 serve.command 從 Sono 目錄啟動。');
+    return;
+  }
+
+  // Build ptFiles using URL-based entries instead of File objects
+  ptFiles = {}; ptScales = {};
+  for (const item of allItems) {
+    const cid = item.name.split('_')[0];
+    if (!ptFiles[cid]) ptFiles[cid] = [];
+    ptFiles[cid].push(item); // { name, url }
+  }
+
+  // Fetch MD scale files
+  const mdFetches = allItems.map(item => {
+    const mdUrl = item.url.replace(/\.(jpg|jpeg|png)$/i, '.md');
+    return fetch(mdUrl).then(r => r.ok ? r.text() : null).then(txt => {
+      if (!txt) return;
+      const m = txt.match(/px per mm[^0-9`]*`?([0-9.]+)/i) || txt.match(/PhysicalDeltaY[:\s]+([0-9.]+)/i);
+      if (m) {
+        const cid = item.name.split('_')[0];
+        const key = item.name.replace(/\.[^.]+$/, '');
+        if (!ptScales[cid]) ptScales[cid] = {};
+        ptScales[cid][key] = parseFloat(m[1]);
+      }
+    }).catch(()=>{});
+  });
+  await Promise.all(mdFetches);
+
+  patients = Object.keys(ptFiles).sort();
+  const sv = localStorage.getItem(SK);
+  if (sv) {
+    try {
+      const p = JSON.parse(sv);
+      if (Object.keys(p).length && confirm(`找到 ${Object.keys(p).length} 筆已儲存紀錄，是否載入？`)) meas = p;
+    } catch(e) {}
+  }
+  curPt = Math.max(0, patients.findIndex(p => !isDone(p)));
+  renderSide(); loadPt(curPt);
+  document.getElementById('blindBadge').style.display = 'inline-block';
+  document.getElementById('btnExport').style.display = 'inline-block';
+  updateOvProgress();
+  if (btn) { btn.textContent = `✓ 已載入 ${patients.length} 位`; btn.disabled = false; }
+  autoLoad.loading = false;
+}
+
+async function loadManifest() {
+  const manifestPaths = ['../ready/manifest.json', '/ready/manifest.json'];
+  for (const manifestPath of manifestPaths) {
+    try {
+      const res = await fetch(manifestPath);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const base = new URL(manifestPath.replace(/manifest\.json$/,''), location.href);
+      return (data.images || []).map(item => {
+        const path = typeof item === 'string' ? item : item.path;
+        const name = path.split('/').pop();
+        return { name, url: new URL(path, base).href };
+      });
+    } catch(e) {}
+  }
+  return [];
+}
+
+// 遞迴爬取目錄，depth=最多再往下幾層
+async function crawlDir(path, depth=3) {
+  if (depth < 0) return [];
+  let r;
+  try { r = await fetch(path); } catch(e) { return []; }
+  if (!r.ok) return [];
+  const html = await r.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const hrefs = Array.from(doc.querySelectorAll('a[href]'))
+    .map(a => a.getAttribute('href'))
+    .filter(h => h && !h.startsWith('?') && h !== '../' && !h.startsWith('/'));
+
+  const items = [];
+  for (const h of hrefs) {
+    if (/\.(jpg|jpeg|png)$/i.test(h)) {
+      // 從路徑中取出檔名（最後一段）
+      const name = h.split('/').pop();
+      items.push({ name, url: location.origin + path + h });
+    } else if (h.endsWith('/')) {
+      const sub = await crawlDir(path + h, depth - 1);
+      items.push(...sub);
+    }
+  }
+  return items;
+}
+
+// ── GROUPS FILTER BUTTONS ────────────────────────────────────
+let grpFilterVal = '';
+function setGrpFilter(v){
+  grpFilterVal = v;
+  ['gbAll','gbCA','gbCtA','gbCB','gbCtB'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.classList.remove('active');
+  });
+  const map={'':'gbAll','CASE_A':'gbCA','CTRL_A':'gbCtA','CASE_B':'gbCB','CTRL_B':'gbCtB'};
+  const active=document.getElementById(map[v]); if(active) active.classList.add('active');
+  filterGrpTable(document.getElementById('grpSearch')?.value||'');
+}
+function filterGrpTable(search){
+  const filtered=PATIENTS.filter(d=>{
+    if(grpFilterVal && d.grp!==grpFilterVal) return false;
+    if(search && !d.id.includes(search.trim())) return false;
+    return true;
+  });
+  renderGrpTable(filtered);
+}
+
+// ── KEYBOARD ────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){cancelM();return;}
+  const tag=e.target.tagName, inp=tag==='INPUT'||tag==='TEXTAREA';
+  if(!patients.length||inp) return;
+  if(e.key==='ArrowLeft'){chImg(-1);e.preventDefault();}
+  if(e.key==='ArrowRight'){chImg(1);e.preventDefault();}
+  if(e.key==='PageUp'){navPt(-1);e.preventDefault();}
+  if(e.key==='PageDown'){navPt(1);e.preventDefault();}
+});
+</script>
+</body>
+</html>

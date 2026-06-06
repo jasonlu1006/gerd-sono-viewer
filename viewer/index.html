@@ -1441,12 +1441,20 @@ function tryDetectScale(){
     const med=spacings[Math.floor(spacings.length/2)];
     if(med<5) return;
     _scDetSpacing=med; _scDetCid=cid; _scDetKey=key;
-    document.getElementById('scDetPx').textContent=med;
+    // 無標注刻度 = 一定是 1cm（有標注的機器已有 DICOM 校正）→ 直接套用
+    confirmScale(10);
+  }catch(e){
+    // 偵測失敗時才顯示手動輸入框
+    _scDetSpacing=null; _scDetCid=cid; _scDetKey=key;
+    document.getElementById('scDetPx').textContent='?';
     document.getElementById('scaleConfirm').style.display='block';
-  }catch(e){/* cross-origin or other error – silently skip */}
+  }
 }
 function confirmScale(mmPerTick){
-  if(!_scDetSpacing) return;
+  // _scDetSpacing 為 null 代表自動偵測失敗，無法計算 px/mm，直接關閉
+  if(!_scDetSpacing||!_scDetCid||!_scDetKey){
+    document.getElementById('scaleConfirm').style.display='none'; return;
+  }
   const pxPerMm=Math.round(_scDetSpacing/mmPerTick*1000)/1000;
   mScale=pxPerMm;
   if(!ptScales[_scDetCid]) ptScales[_scDetCid]={};

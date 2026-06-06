@@ -481,6 +481,15 @@ nav{height:var(--nav-h);background:#0e0e0e;border-bottom:1px solid var(--border2
         <span class="imgBadge" id="imgLbl"></span>
         <span class="imgBadge" id="imgSc"></span>
       </div>
+      <div id="scaleConfirm" style="display:none;position:absolute;top:40px;left:8px;background:#1a1a1a;border:1px solid #555;border-radius:8px;padding:10px 14px;z-index:200;font-size:12px;color:#ddd;pointer-events:auto;min-width:200px">
+        🔍 偵測到刻度間距 <b id="scDetPx">?</b> px<br>
+        <span style="font-size:11px;color:#aaa">每格為幾公分？</span>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="confirmScale(10)" style="flex:1;padding:6px 4px;background:#1b5e20;border:1px solid #4CAF50;border-radius:5px;color:#fff;cursor:pointer;font-size:12px;line-height:1.4">1 cm</button>
+          <button onclick="confirmScale(5)"  style="flex:1;padding:6px 4px;background:#0d2a4a;border:1px solid #2196F3;border-radius:5px;color:#fff;cursor:pointer;font-size:12px;line-height:1.4">0.5 cm</button>
+          <button onclick="document.getElementById('scaleConfirm').style.display='none'" style="padding:6px 8px;background:#2a2a2a;border:1px solid #444;border-radius:5px;color:#888;cursor:pointer;font-size:11px">✕</button>
+        </div>
+      </div>
       <div id="mHint"></div>
       <!-- 圖片導覽：在圖片底部 -->
       <div id="imgNavBar">
@@ -680,15 +689,18 @@ if (sessionStorage.getItem('gerd_auth') === '1') {
 
 // ── STATE ──────────────────────────────────────────────────
 const SK = 'gerd_sono_v1';
+const SK_LINES = 'gerd_lines_v1';
 const PN = ['A1','A2','B1','B2','C2'];   // numeric params
 const PS = ['A3','C1'];                  // select params
 const PA = ['A1','A2','A3','B1','B2','C1','C2','NOTE']; // all params
 
 let patients=[], ptFiles={}, ptScales={}, meas={};
+let measLines={};  // { [cid]: { [imgKey]: { [param]: {x1n,y1n,x2n,y2n,label} } } }
 let grpData=[];
 let curPt=0, curImg=0, curURLs=[];
 let sfilt='all', ssearch='';
 let mParam=null, mPts=[], mScale=null;
+let _scDetSpacing=null, _scDetCid=null, _scDetKey=null;
 
 // ── NAVIGATION ─────────────────────────────────────────────
 function goto(pg){
@@ -1185,10 +1197,10 @@ function loadImgFolder(inp){
   ptScales={};
   const ps=mds.map(f=>f.text().then(t=>{
     const key=f.name.replace(/\.md$/i,'');
-    const m=t.match(/PhysicalDeltaY[:\s]+([0-9.]+)/i);
-    if(m){const cid=key.split('_')[0];
+    const mPpMm=t.match(/\*\*px per mm\*\*\s*\|\s*`([0-9.]+)`/i)||t.match(/px per mm[^0-9`]*`?([0-9.]+)/i);
+    if(mPpMm){const cid=key.split('_')[0];
       if(!ptScales[cid]) ptScales[cid]={};
-      ptScales[cid][key]=parseFloat(m[1]);}
+      ptScales[cid][key]=parseFloat(mPpMm[1]);}
   }).catch(()=>{}));
   Promise.all(ps).then(()=>{
     patients=Object.keys(ptFiles).sort();
@@ -1196,6 +1208,8 @@ function loadImgFolder(inp){
     if(sv){try{const p=JSON.parse(sv);
       if(Object.keys(p).length&&confirm(`找到 ${Object.keys(p).length} 筆已儲存紀錄，是否載入？`)) meas=p;
     }catch(e){}}
+    const svL=localStorage.getItem(SK_LINES);
+    if(svL){try{measLines=JSON.parse(svL);}catch(e){}}
     curPt=Math.max(0,patients.findIndex(p=>!isDone(p)));
     renderSide(); loadPt(curPt);
     document.getElementById('blindBadge').style.display='inline-block';
@@ -1240,10 +1254,11 @@ function showImg(i){
   document.getElementById('imgCtr').textContent=`${i+1} / ${items.length}`;
   const key=items[i].name.replace(/\.[^.]+$/,'');
   mScale=(ptScales[cid]||{})[key]||null;
-  document.getElementById('imgSc').textContent=mScale?`${mScale} px/mm`:'比例尺未知';
+  updateScaleBadge();
+  document.getElementById('scaleConfirm').style.display='none';
   resetZoom();
-  el.onload=()=>{ resetZoom(); posCanvas(); };
-  if(el.complete&&el.naturalWidth){ resetZoom(); posCanvas(); }
+  el.onload=()=>{ resetZoom(); posCanvas(); if(!mScale) tryDetectScale(); };
+  if(el.complete&&el.naturalWidth){ resetZoom(); posCanvas(); if(!mScale) tryDetectScale(); }
   cancelM();
 }
 
@@ -1382,12 +1397,103 @@ cv.addEventListener('mousemove',e=>{
   cx.strokeStyle='rgba(255,200,0,.5)'; cx.lineWidth=1.5; cx.setLineDash([4,3]); cx.stroke(); cx.setLineDash([]);
 });
 
+// ── SCALE DETECTION ──────────────────────────────────────────
+function updateScaleBadge(){
+  document.getElementById('imgSc').textContent=mScale?`${(+mScale).toFixed(3)} px/mm`:'⚠ 比例尺未知';
+}
+function tryDetectScale(){
+  const img=document.getElementById('mainImg');
+  if(!img.naturalWidth||!img.naturalHeight) return;
+  const cid=patients[curPt];
+  const items=ptFiles[cid]||[];
+  if(!items[curImg]) return;
+  const key=items[curImg].name.replace(/\.[^.]+$/,'');
+
+  // Draw image to offscreen canvas and scan left edge for tick marks
+  const oc=document.createElement('canvas');
+  oc.width=img.naturalWidth; oc.height=img.naturalHeight;
+  try{
+    const octx=oc.getContext('2d');
+    octx.drawImage(img,0,0);
+    const sw=Math.min(30,img.naturalWidth);
+    const data=octx.getImageData(0,0,sw,img.naturalHeight).data;
+    // Average brightness per row in the scan strip
+    const brightness=new Array(img.naturalHeight).fill(0);
+    for(let y=0;y<img.naturalHeight;y++){
+      let s=0;
+      for(let x=0;x<sw;x++){const idx=(y*sw+x)*4;s+=(data[idx]+data[idx+1]+data[idx+2])/3;}
+      brightness[y]=s/sw;
+    }
+    // Find local brightness peaks (tick marks)
+    const thresh=110, minGap=8;
+    const peaks=[];
+    for(let y=2;y<img.naturalHeight-2;y++){
+      if(brightness[y]>thresh&&brightness[y]>=brightness[y-1]&&brightness[y]>=brightness[y-2]
+         &&brightness[y]>=brightness[y+1]&&brightness[y]>=brightness[y+2]){
+        if(!peaks.length||y-peaks[peaks.length-1]>minGap) peaks.push(y);
+      }
+    }
+    if(peaks.length<3) return; // not enough peaks
+    // Compute median spacing
+    const spacings=[];
+    for(let i=1;i<peaks.length;i++) spacings.push(peaks[i]-peaks[i-1]);
+    spacings.sort((a,b)=>a-b);
+    const med=spacings[Math.floor(spacings.length/2)];
+    if(med<5) return;
+    _scDetSpacing=med; _scDetCid=cid; _scDetKey=key;
+    document.getElementById('scDetPx').textContent=med;
+    document.getElementById('scaleConfirm').style.display='block';
+  }catch(e){/* cross-origin or other error – silently skip */}
+}
+function confirmScale(mmPerTick){
+  if(!_scDetSpacing) return;
+  const pxPerMm=Math.round(_scDetSpacing/mmPerTick*1000)/1000;
+  mScale=pxPerMm;
+  if(!ptScales[_scDetCid]) ptScales[_scDetCid]={};
+  ptScales[_scDetCid][_scDetKey]=pxPerMm;
+  updateScaleBadge();
+  document.getElementById('scaleConfirm').style.display='none';
+}
+
+// ── CANVAS DRAWING ───────────────────────────────────────────
 function clearCanvas(){
   cancelM(); mPts=[];
+  // Clear stored lines for current image
+  const cid=patients[curPt];
+  const key=((ptFiles[cid]||[])[curImg]||{name:''}).name.replace(/\.[^.]+$/,'');
+  if(cid&&key&&measLines[cid]&&measLines[cid][key]){
+    delete measLines[cid][key];
+    localStorage.setItem(SK_LINES,JSON.stringify(measLines));
+  }
   cx.clearRect(0,0,cv.width,cv.height);
 }
 function redraw(){
   cx.clearRect(0,0,cv.width,cv.height);
+  // Draw stored lines for current image
+  const cid=patients[curPt];
+  if(cid&&cv.width>0){
+    const key=((ptFiles[cid]||[])[curImg]||{name:''}).name.replace(/\.[^.]+$/,'');
+    if(key){
+      const lines=(measLines[cid]||{})[key]||{};
+      Object.values(lines).forEach(ln=>{
+        if(!ln) return;
+        const x1=ln.x1n*cv.width,y1=ln.y1n*cv.height,x2=ln.x2n*cv.width,y2=ln.y2n*cv.height;
+        cx.beginPath(); cx.moveTo(x1,y1); cx.lineTo(x2,y2);
+        cx.strokeStyle='rgba(255,204,0,0.8)'; cx.lineWidth=1.5; cx.stroke();
+        const mx2=(x1+x2)/2, my2=(y1+y2)/2-14;
+        cx.font='bold 12px sans-serif';
+        const tw2=cx.measureText(ln.label).width;
+        cx.fillStyle='rgba(0,0,0,.75)'; cx.fillRect(mx2-tw2/2-5,my2-12,tw2+10,17);
+        cx.fillStyle='#ffcc00'; cx.textAlign='center'; cx.fillText(ln.label,mx2,my2); cx.textAlign='left';
+        [[x1,y1],[x2,y2]].forEach(([px,py],idx)=>{
+          cx.beginPath(); cx.arc(px,py,3,0,Math.PI*2);
+          cx.fillStyle=idx===0?'#4CAF50':'#ff9800'; cx.fill();
+          cx.strokeStyle='#fff'; cx.lineWidth=1; cx.stroke();
+        });
+      });
+    }
+  }
+  // Draw active in-progress points
   mPts.forEach((p,i)=>{
     cx.beginPath(); cx.arc(p.x,p.y,3,0,Math.PI*2);
     cx.fillStyle=i===0?'#4CAF50':'#ff9800'; cx.fill();
@@ -1395,14 +1501,19 @@ function redraw(){
   });
 }
 function drawFinal(p1,p2,lbl){
-  redraw();
-  cx.beginPath(); cx.moveTo(p1.x,p1.y); cx.lineTo(p2.x,p2.y);
-  cx.strokeStyle='#ffcc00'; cx.lineWidth=2; cx.stroke();
-  const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2-14;
-  cx.font='bold 13px sans-serif';
-  const tw=cx.measureText(lbl).width;
-  cx.fillStyle='rgba(0,0,0,.8)'; cx.fillRect(mx-tw/2-6,my-14,tw+12,20);
-  cx.fillStyle='#ffcc00'; cx.textAlign='center'; cx.fillText(lbl,mx,my); cx.textAlign='left';
+  // Store line as normalised coordinates (zoom-stable)
+  if(mParam&&cv.width>0&&cv.height>0){
+    const cid=patients[curPt];
+    const key=((ptFiles[cid]||[])[curImg]||{name:''}).name.replace(/\.[^.]+$/,'');
+    if(cid&&key){
+      if(!measLines[cid]) measLines[cid]={};
+      if(!measLines[cid][key]) measLines[cid][key]={};
+      measLines[cid][key][mParam]={x1n:p1.x/cv.width,y1n:p1.y/cv.height,
+        x2n:p2.x/cv.width,y2n:p2.y/cv.height,label:lbl};
+      localStorage.setItem(SK_LINES,JSON.stringify(measLines));
+    }
+  }
+  redraw(); // redraw draws all stored lines including the one just saved
 }
 function hint(t){const h=document.getElementById('mHint');h.textContent=t;h.style.display='block';}
 
@@ -1563,7 +1674,7 @@ function renderResults(){
 
 // ── CSV EXPORT ───────────────────────────────────────────────
 function exportCSV(){
-  const hdr=['ChartID','A1_mm','A2_mm','A3','B1_mm','B2','C1','C2_cm','Notes','Timestamp'];
+  const hdr=['ChartID','A1_mm','A2_mm','A3','B1_mm','B2_mm','C1','C2_cm','Notes','Timestamp'];
   const rows=[hdr.join(',')];
   patients.forEach(cid=>{
     const d=meas[cid]||{};
@@ -1621,12 +1732,12 @@ async function autoLoad() {
     const mdUrl = item.url.replace(/\.(jpg|jpeg|png)$/i, '.md');
     return fetch(mdUrl).then(r => r.ok ? r.text() : null).then(txt => {
       if (!txt) return;
-      const m = txt.match(/px per mm[^0-9`]*`?([0-9.]+)/i) || txt.match(/PhysicalDeltaY[:\s]+([0-9.]+)/i);
-      if (m) {
-        const cid = item.name.split('_')[0];
-        const key = item.name.replace(/\.[^.]+$/, '');
-        if (!ptScales[cid]) ptScales[cid] = {};
-        ptScales[cid][key] = parseFloat(m[1]);
+      const mPpMm=txt.match(/\*\*px per mm\*\*\s*\|\s*`([0-9.]+)`/i)||txt.match(/px per mm[^0-9`]*`?([0-9.]+)/i);
+      if(mPpMm){
+        const cid=item.name.split('_')[0];
+        const key=item.name.replace(/\.[^.]+$/,'');
+        if(!ptScales[cid]) ptScales[cid]={};
+        ptScales[cid][key]=parseFloat(mPpMm[1]);
       }
     }).catch(()=>{});
   });
@@ -1640,6 +1751,8 @@ async function autoLoad() {
       if (Object.keys(p).length && confirm(`找到 ${Object.keys(p).length} 筆已儲存紀錄，是否載入？`)) meas = p;
     } catch(e) {}
   }
+  const svL=localStorage.getItem(SK_LINES);
+  if(svL){try{measLines=JSON.parse(svL);}catch(e){}}
   curPt = Math.max(0, patients.findIndex(p => !isDone(p)));
   renderSide(); loadPt(curPt);
   document.getElementById('blindBadge').style.display = 'inline-block';
@@ -1719,9 +1832,16 @@ function filterGrpTable(search){
 
 // ── KEYBOARD ────────────────────────────────────────────────
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){cancelM();return;}
+  if(e.key==='Escape'){
+    cancelM();
+    document.getElementById('shortcutModal').style.display='none';
+    document.getElementById('scaleConfirm').style.display='none';
+    return;
+  }
   const tag=e.target.tagName, inp=tag==='INPUT'||tag==='TEXTAREA';
-  if(!patients.length||inp) return;
+  if(inp) return;
+  if(e.key==='?'){document.getElementById('shortcutModal').style.display='flex';return;}
+  if(!patients.length) return;
   if(e.key==='ArrowLeft'){chImg(-1);e.preventDefault();}
   if(e.key==='ArrowRight'){chImg(1);e.preventDefault();}
   if(e.key==='PageUp'){navPt(-1);e.preventDefault();}
@@ -1730,5 +1850,32 @@ document.addEventListener('keydown',e=>{
 
 updateOvProgress();
 </script>
+
+<!-- ── 快捷鍵說明 Modal ───────────────────────────────────── -->
+<div id="shortcutModal" onclick="if(event.target===this)this.style.display='none'"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;
+         align-items:center;justify-content:center">
+  <div style="background:#1c1c1c;border:1px solid #333;border-radius:10px;padding:24px 28px;
+              width:320px;max-width:90vw;box-shadow:0 8px 32px #000a">
+    <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:16px">⌨️ 快捷鍵說明</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr><td style="padding:6px 0;color:#aaa;font-size:13px;width:130px">← / →</td>
+          <td style="color:#ddd;font-size:13px">切換影像</td></tr>
+      <tr><td style="padding:6px 0;color:#aaa;font-size:13px">Page Up / Page Down</td>
+          <td style="color:#ddd;font-size:13px">切換病人</td></tr>
+      <tr><td style="padding:6px 0;color:#aaa;font-size:13px">Esc</td>
+          <td style="color:#ddd;font-size:13px">取消量測 / 關閉視窗</td></tr>
+      <tr><td style="padding:6px 0;color:#aaa;font-size:13px">? (Shift+/)</td>
+          <td style="color:#ddd;font-size:13px">顯示此快捷鍵說明</td></tr>
+    </table>
+    <hr style="border:none;border-top:1px solid #333;margin:14px 0">
+    <div style="font-size:11px;color:#666;line-height:1.6">
+      點擊影像外區域或按 Esc 關閉此視窗
+    </div>
+    <button onclick="document.getElementById('shortcutModal').style.display='none'"
+      style="margin-top:14px;width:100%;padding:8px;background:#2a2a2a;border:1px solid #3a3a3a;
+             border-radius:6px;color:#aaa;cursor:pointer;font-size:13px">關閉</button>
+  </div>
+</div>
 </body>
 </html>

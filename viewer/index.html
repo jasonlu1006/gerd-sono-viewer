@@ -1197,10 +1197,10 @@ function loadImgFolder(inp){
   ptScales={};
   const ps=mds.map(f=>f.text().then(t=>{
     const key=f.name.replace(/\.md$/i,'');
-    const mPpMm=t.match(/\*\*px per mm\*\*\s*\|\s*`([0-9.]+)`/i)||t.match(/px per mm[^0-9`]*`?([0-9.]+)/i);
+    const mPpMm=t.match(/\*\*px per mm\*\*\s*\|\s*`(-?[0-9.]+)`/i)||t.match(/px per mm[^0-9`-]*`?(-?[0-9.]+)/i);
     if(mPpMm){const cid=key.split('_')[0];
       if(!ptScales[cid]) ptScales[cid]={};
-      ptScales[cid][key]=parseFloat(mPpMm[1]);}
+      ptScales[cid][key]=Math.abs(parseFloat(mPpMm[1]));}
   }).catch(()=>{}));
   Promise.all(ps).then(()=>{
     patients=Object.keys(ptFiles).sort();
@@ -1415,7 +1415,7 @@ function tryDetectScale(){
   try{
     const octx=oc.getContext('2d');
     octx.drawImage(img,0,0);
-    const sw=Math.min(30,img.naturalWidth);
+    const sw=Math.min(150,img.naturalWidth);
     const data=octx.getImageData(0,0,sw,img.naturalHeight).data;
     // Average brightness per row in the scan strip
     const brightness=new Array(img.naturalHeight).fill(0);
@@ -1425,7 +1425,7 @@ function tryDetectScale(){
       brightness[y]=s/sw;
     }
     // Find local brightness peaks (tick marks)
-    const thresh=110, minGap=8;
+    const thresh=80, minGap=15;
     const peaks=[];
     for(let y=2;y<img.naturalHeight-2;y++){
       if(brightness[y]>thresh&&brightness[y]>=brightness[y-1]&&brightness[y]>=brightness[y-2]
@@ -1740,12 +1740,12 @@ async function autoLoad() {
     const mdUrl = item.url.replace(/\.(jpg|jpeg|png)$/i, '.md');
     return fetch(mdUrl).then(r => r.ok ? r.text() : null).then(txt => {
       if (!txt) return;
-      const mPpMm=txt.match(/\*\*px per mm\*\*\s*\|\s*`([0-9.]+)`/i)||txt.match(/px per mm[^0-9`]*`?([0-9.]+)/i);
+      const mPpMm=txt.match(/\*\*px per mm\*\*\s*\|\s*`(-?[0-9.]+)`/i)||txt.match(/px per mm[^0-9`-]*`?(-?[0-9.]+)/i);
       if(mPpMm){
         const cid=item.name.split('_')[0];
         const key=item.name.replace(/\.[^.]+$/,'');
         if(!ptScales[cid]) ptScales[cid]={};
-        ptScales[cid][key]=parseFloat(mPpMm[1]);
+        ptScales[cid][key]=Math.abs(parseFloat(mPpMm[1]));
       }
     }).catch(()=>{});
   });

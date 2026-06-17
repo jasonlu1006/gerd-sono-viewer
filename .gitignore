@@ -19,3 +19,14 @@ Raw Data/
 # 本機輸出與暫存
 *.log
 __pycache__/
+
+# 大型 US 影像（3.5GB，改拆成 8 個 image repo，主 repo 不放影像）
+ready/converter_output_US/
+# 舊版測試病人影像（舊路徑結構，已淘汰）
+ready/[0-9]*/
+
+# 舊工具備份（交班註明勿混用，不上線）
+Old Tool Files/
+
+# 研究交班（含 chart id 與臨床細節，僅本機保留，不推 public repo）
+交班紀錄.md

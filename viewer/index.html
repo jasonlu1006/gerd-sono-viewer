@@ -1415,24 +1415,29 @@ function tryDetectScale(){
   try{
     const octx=oc.getContext('2d');
     octx.drawImage(img,0,0);
-    const sw=Math.min(150,img.naturalWidth);
-    const data=octx.getImageData(0,0,sw,img.naturalHeight).data;
-    // Average brightness per row in the scan strip
-    const brightness=new Array(img.naturalHeight).fill(0);
-    for(let y=0;y<img.naturalHeight;y++){
-      let s=0;
-      for(let x=0;x<sw;x++){const idx=(y*sw+x)*4;s+=(data[idx]+data[idx+1]+data[idx+2])/3;}
-      brightness[y]=s/sw;
-    }
-    // Find local brightness peaks (tick marks)
-    const thresh=80, minGap=15;
-    const peaks=[];
-    for(let y=2;y<img.naturalHeight-2;y++){
-      if(brightness[y]>thresh&&brightness[y]>=brightness[y-1]&&brightness[y]>=brightness[y-2]
-         &&brightness[y]>=brightness[y+1]&&brightness[y]>=brightness[y+2]){
-        if(!peaks.length||y-peaks[peaks.length-1]>minGap) peaks.push(y);
+    // Find the tick-mark column: scan each x from 0..200, pick the one with most peaks
+    const scanW=Math.min(200,img.naturalWidth);
+    let bestX=0,bestPeaks=[],bestScore=0;
+    for(let x=0;x<scanW;x++){
+      const col=octx.getImageData(x,0,1,img.naturalHeight).data;
+      const b=[];for(let y=0;y<img.naturalHeight;y++) b.push((col[y*4]+col[y*4+1]+col[y*4+2])/3);
+      const ps=[];
+      for(let y=2;y<img.naturalHeight-2;y++){
+        if(b[y]>180&&b[y]>=b[y-1]&&b[y]>=b[y-2]&&b[y]>=b[y+1]&&b[y]>=b[y+2]){
+          if(!ps.length||y-ps[ps.length-1]>10) ps.push(y);
+        }
+      }
+      if(ps.length>=3){
+        // score by regularity of spacing
+        const sp=[];for(let i=1;i<ps.length;i++) sp.push(ps[i]-ps[i-1]);
+        sp.sort((a,b)=>a-b);
+        const med=sp[Math.floor(sp.length/2)];
+        const std=Math.sqrt(sp.map(s=>(s-med)**2).reduce((a,b)=>a+b,0)/sp.length);
+        const score=ps.length/(std+1);
+        if(score>bestScore){bestScore=score;bestX=x;bestPeaks=ps;}
       }
     }
+    const peaks=bestPeaks;
     if(peaks.length<3) return; // not enough peaks
     // Compute median spacing
     const spacings=[];
